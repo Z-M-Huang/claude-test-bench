@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IStorage } from './interfaces/storage.js';
@@ -55,7 +56,14 @@ export function createApp(deps: AppDeps): express.Express {
   }
 
   // ─── Static files (production) ─────────────────────────────────────
-  const webDistPath = path.resolve(__dirname, '..', 'web');
+  // Try multiple resolution paths: dist/server/../web, or cwd/dist/web
+  const webDistCandidates = [
+    path.resolve(__dirname, '..', 'web'),           // from dist/server/ → dist/web/
+    path.resolve(process.cwd(), 'dist', 'web'),     // from project root
+  ];
+  const webDistPath = webDistCandidates.find((p) => {
+    try { return fs.statSync(p).isDirectory(); } catch { return false; }
+  }) ?? webDistCandidates[0];
   app.use(express.static(webDistPath));
 
   // SPA fallback: serve index.html for non-API routes
