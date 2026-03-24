@@ -1,0 +1,19 @@
+{
+  "id": "setup-oauth-claude-code",
+  "name": "Claude Code (OAuth)",
+  "description": "Claude Code via OAuth token",
+  "provider": {
+    "kind": "oauth",
+    "oauthToken": "xxxxxxxxxxxxxx",
+    "model": "claude-sonnet-4-6"
+  },
+  "claudeMdFiles": [],
+  "rules": [],
+  "skills": [],
+  "subagents": [],
+  "mcpServers": [],
+  "permissionMode": "acceptEdits",
+  "timeoutSeconds": 300,
+  "createdAt": "2026-03-24T00:00:00.000Z",
+  "updatedAt": "2026-03-24T00:00:00.000Z"
+}

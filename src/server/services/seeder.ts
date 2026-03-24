@@ -1,16 +1,80 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { IStorage } from '../interfaces/storage.js';
 import type { ILogger } from '../interfaces/logger.js';
+import type { Scenario } from '../types/index.js';
+import type { TestSetup } from '../types/index.js';
 
 /**
- * Seed the storage with default scenarios when it is empty.
- * Currently a no-op — seed data will be added in a future iteration.
+ * Seed files that ship with the project under docs/schemas/.
+ * Each entry maps a source file to the storage method used to persist it.
  */
-export async function seedIfEmpty(storage: IStorage, logger: ILogger): Promise<void> {
-  const scenarios = await storage.listScenarios();
-  if (scenarios.length > 0) return;
+const SEED_SCENARIOS = [
+  'scenario-baseline.example.json',
+  'scenario-with-claude-md.example.json',
+];
 
-  // TODO: Add seed scenarios when ready
-  logger.info(
-    'No scenarios found. Create scenarios via UI or write JSON to .claude-test-bench/scenarios/custom/',
-  );
+const SEED_SETUPS = [
+  'setup-oauth.example.json',
+  'setup-api.example.json',
+];
+
+function resolveSchemasDir(): string {
+  // Try common locations: relative to cwd, relative to this file's compiled location
+  const candidates = [
+    path.join(process.cwd(), 'docs', 'schemas'),
+    path.join(process.cwd(), '..', 'docs', 'schemas'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) return dir;
+  }
+  return candidates[0]; // fallback
+}
+
+function loadJsonFile<T>(filePath: string): T | undefined {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Seed storage with example scenarios and setups when empty. */
+export async function seedIfEmpty(storage: IStorage, logger: ILogger): Promise<void> {
+  const schemasDir = resolveSchemasDir();
+
+  // Seed scenarios
+  const existingScenarios = await storage.listScenarios();
+  if (existingScenarios.length === 0) {
+    let seeded = 0;
+    for (const file of SEED_SCENARIOS) {
+      const scenario = loadJsonFile<Scenario>(path.join(schemasDir, file));
+      if (scenario) {
+        await storage.saveScenario(scenario);
+        seeded++;
+        logger.info('Seeded scenario', { name: scenario.name, id: scenario.id });
+      }
+    }
+    if (seeded === 0) {
+      logger.info('No seed scenarios found in ' + schemasDir);
+    }
+  }
+
+  // Seed setups
+  const existingSetups = await storage.listSetups();
+  if (existingSetups.length === 0) {
+    let seeded = 0;
+    for (const file of SEED_SETUPS) {
+      const setup = loadJsonFile<TestSetup>(path.join(schemasDir, file));
+      if (setup) {
+        await storage.saveSetup(setup);
+        seeded++;
+        logger.info('Seeded setup', { name: setup.name, id: setup.id });
+      }
+    }
+    if (seeded === 0) {
+      logger.info('No seed setups found in ' + schemasDir);
+    }
+  }
 }

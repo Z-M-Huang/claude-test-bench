@@ -1,0 +1,25 @@
+{
+  "id": "setup-api-minimax",
+  "name": "MiniMax M2.7 (API)",
+  "description": "MiniMax via Anthropic-compatible API endpoint",
+  "provider": {
+    "kind": "api",
+    "baseUrl": "https://api.minimax.io/anthropic",
+    "apiKey": "xxxxx",
+    "model": "MiniMax-M2.7"
+  },
+  "claudeMdFiles": [
+    {
+      "role": "project",
+      "content": "# Reasoning Guidelines\n\n1. Always calculate the critical path before proposing a schedule\n2. Verify all constraints are satisfied before declaring success\n3. If a constraint cannot be met, state this clearly rather than forcing a solution\n4. Show all arithmetic work \u2014 never skip calculations"
+    }
+  ],
+  "rules": [],
+  "skills": [],
+  "subagents": [],
+  "mcpServers": [],
+  "permissionMode": "acceptEdits",
+  "timeoutSeconds": 300,
+  "createdAt": "2026-03-24T00:00:00.000Z",
+  "updatedAt": "2026-03-24T00:00:00.000Z"
+}
