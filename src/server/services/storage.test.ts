@@ -131,9 +131,9 @@ describe('JsonFileStorage', () => {
     });
 
     it('filters scenarios by category', async () => {
-      await storage.saveScenario(makeScenario({ id: 's1', category: 'coding' }));
-      await storage.saveScenario(makeScenario({ id: 's2', category: 'debugging' }));
-      const filtered = await storage.listScenarios({ category: 'coding' });
+      await storage.saveScenario(makeScenario({ id: 's1', category: 'planning' }));
+      await storage.saveScenario(makeScenario({ id: 's2', category: 'reasoning' }));
+      const filtered = await storage.listScenarios({ category: 'planning' });
       expect(filtered).toHaveLength(1);
       expect(filtered[0].id).toBe('s1');
     });

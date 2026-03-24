@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IStorage } from './interfaces/storage.js';
 import type { ILogger } from './interfaces/logger.js';
+import { createSetupRoutes } from './routes/setups.js';
+import { createScenarioRoutes } from './routes/scenarios.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +37,10 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  // ─── API routes ──────────────────────────────────────────────────────
+  app.use('/api/setups', createSetupRoutes(deps.storage, deps.logger));
+  app.use('/api/scenarios', createScenarioRoutes(deps.storage, deps.logger));
 
   // ─── Static files (production) ─────────────────────────────────────
   const webDistPath = path.resolve(__dirname, '..', 'web');

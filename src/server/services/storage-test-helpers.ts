@@ -40,7 +40,7 @@ export function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {
     id: 'scenario-1',
     name: 'Test Scenario',
-    category: 'coding',
+    category: 'planning',
     builtIn: false,
     prompt: 'Do something',
     workspaceFiles: [],

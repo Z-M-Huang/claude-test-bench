@@ -4,17 +4,15 @@
 
 import type { ScoringDimension } from './setup.js';
 
-/** Built-in category labels for scenarios. */
+/** Built-in category labels for scenarios (behavior/planning focused). */
 export type ScenarioCategory =
-  | 'coding'
-  | 'debugging'
-  | 'refactoring'
-  | 'testing'
-  | 'documentation'
-  | 'architecture'
-  | 'devops'
-  | 'data'
-  | 'security'
+  | 'planning'
+  | 'instruction-following'
+  | 'reasoning'
+  | 'tool-strategy'
+  | 'error-handling'
+  | 'ambiguity-handling'
+  | 'scope-management'
   | 'custom';
 
 /** A file that should exist in the workspace before the scenario runs. */
