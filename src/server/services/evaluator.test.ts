@@ -195,4 +195,43 @@ describe('EvaluationOrchestrator', () => {
       expect(req?.met).toBe(false);
     });
   });
+
+  describe('SDK error handling', () => {
+    it('propagates SDK query error when subtype is not success', async () => {
+      mockQueryFn.mockImplementation(() => {
+        async function* gen() {
+          yield {
+            type: 'result',
+            subtype: 'error_during_execution',
+            result: 'Rate limit exceeded',
+            total_cost_usd: 0,
+            num_turns: 0,
+          };
+        }
+        return gen();
+      });
+
+      await expect(
+        orch.evaluateRun(mkRun(), mkScenario(), mkSetup(), mkRequest({ evaluators: [mkEval('solo')], maxRounds: 1 }), mkCallbacks()),
+      ).rejects.toThrow('SDK query failed');
+    });
+
+    it('handles missing result field in error response', async () => {
+      mockQueryFn.mockImplementation(() => {
+        async function* gen() {
+          yield {
+            type: 'result',
+            subtype: 'error_during_execution',
+            total_cost_usd: 0,
+            num_turns: 0,
+          };
+        }
+        return gen();
+      });
+
+      await expect(
+        orch.evaluateRun(mkRun(), mkScenario(), mkSetup(), mkRequest({ evaluators: [mkEval('solo')], maxRounds: 1 }), mkCallbacks()),
+      ).rejects.toThrow('unknown error');
+    });
+  });
 });

@@ -5,8 +5,11 @@
 import type {
   IndividualEvaluation,
   InstructionCompliance,
-  EvaluationSynthesis,
 } from '../types/evaluation.js';
+
+// Re-export debate/synthesis parsers so existing imports continue to work
+export { parseSynthesisResponse, parseDebateResponse } from './eval-parsers-debate-impl.js';
+export type { Verdict, DebateParseResult } from './eval-parsers-debate-impl.js';
 
 // ---------------------------------------------------------------------------
 // Score response (Query 1)
@@ -68,49 +71,8 @@ export function toInstructionCompliance(
 }
 
 // ---------------------------------------------------------------------------
-// Synthesis response
+// Helpers
 // ---------------------------------------------------------------------------
-
-export function parseSynthesisResponse(response: string): Partial<EvaluationSynthesis> {
-  const parsed = tryParseJson<RawSynthesisResponse>(response);
-  if (parsed) {
-    return {
-      dimensionScores: validScores(parsed.dimensionScores),
-      weightedTotal: clampScore(parsed.weightedTotal),
-      confidence: clamp01(parsed.confidence),
-      dissenting: toStringArray(parsed.dissenting),
-    };
-  }
-  return parseSynthesisFromText(response);
-}
-
-// ---------------------------------------------------------------------------
-// Debate verdict parsing
-// ---------------------------------------------------------------------------
-
-export type Verdict = 'AGREE' | 'DISAGREE' | 'PARTIAL';
-
-export interface DebateParseResult {
-  readonly verdict: Verdict;
-  readonly updatedScores: Readonly<Record<string, number>>;
-  readonly critiques: readonly string[];
-  readonly reasoning: string;
-}
-
-export function parseDebateResponse(response: string): Partial<DebateParseResult> {
-  const parsed = tryParseJson<RawDebateResponse>(response);
-  if (parsed) {
-    return {
-      verdict: parseVerdict(parsed.verdict),
-      updatedScores: validScores(parsed.updatedScores),
-      critiques: toStringArray(parsed.critiques),
-      reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : undefined,
-    };
-  }
-
-  // Fallback: extract verdict and scores from text patterns
-  return parseDebateFromText(response);
-}
 
 /** Convert score parse result into IndividualEvaluation entries. */
 export function toIndividualEvaluations(
@@ -179,38 +141,6 @@ function parseComplianceFromText(text: string): Partial<ComplianceParseResult> {
   return { followed, violated, notApplicable: [], overallCompliance: undefined };
 }
 
-function parseDebateFromText(text: string): Partial<DebateParseResult> {
-  // Try to extract verdict from text patterns like "VERDICT: AGREE" or "VERDICT: DISAGREE: reason"
-  const verdictMatch = text.match(/VERDICT\s*:\s*(AGREE|DISAGREE|PARTIAL)/i);
-  const verdict = verdictMatch ? parseVerdict(verdictMatch[1]) : 'PARTIAL' as Verdict;
-
-  // Try to extract scores using the same pattern as score text fallback
-  const scores: Record<string, number> = {};
-  const scorePattern = /(\w[\w\s]*?):\s*(\d+(?:\.\d+)?)\s*(?:\/\s*10)?/g;
-  let match: RegExpExecArray | null;
-  while ((match = scorePattern.exec(text)) !== null) {
-    const dim = match[1].trim();
-    // Skip the VERDICT line we already parsed
-    if (/^verdict$/i.test(dim)) continue;
-    const val = parseFloat(match[2]);
-    if (!isNaN(val) && val <= 10) scores[dim] = val;
-  }
-
-  return {
-    verdict,
-    updatedScores: Object.keys(scores).length > 0 ? scores : undefined,
-  };
-}
-
-function parseSynthesisFromText(text: string): Partial<EvaluationSynthesis> {
-  const scoreMatch = text.match(
-    /weighted\s*(?:total|average|score)\s*:?\s*(\d+(?:\.\d+)?)/i,
-  );
-  return {
-    weightedTotal: scoreMatch ? clampScore(parseFloat(scoreMatch[1])) : undefined,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Internal: Raw response shapes
 // ---------------------------------------------------------------------------
@@ -227,20 +157,6 @@ interface RawScoreResponse {
 interface RawComplianceResponse {
   results?: Array<{ instruction?: string; status?: string; evidence?: string }>;
   overallCompliance?: number;
-}
-
-interface RawSynthesisResponse {
-  dimensionScores?: Record<string, number>;
-  weightedTotal?: number;
-  confidence?: number;
-  dissenting?: string[];
-}
-
-interface RawDebateResponse {
-  verdict?: string;
-  updatedScores?: Record<string, number>;
-  critiques?: string[];
-  reasoning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,16 +187,6 @@ function clampScore(val: number | undefined): number {
 function toStringArray(arr: unknown): readonly string[] {
   if (!Array.isArray(arr)) return [];
   return arr.filter((x): x is string => typeof x === 'string');
-}
-
-function parseVerdict(val: unknown): Verdict {
-  if (typeof val === 'string') {
-    const upper = val.toUpperCase();
-    if (upper === 'AGREE' || upper === 'DISAGREE' || upper === 'PARTIAL') {
-      return upper;
-    }
-  }
-  return 'PARTIAL';
 }
 
 function categorizeComplianceResults(

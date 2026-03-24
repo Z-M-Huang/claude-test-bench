@@ -155,6 +155,22 @@ describe('ScenarioRunner', () => {
       expect(result.status).toBe('failed');
       expect(result.error).toBe('Network failure');
     });
+
+    it('handles non-Error thrown values', async () => {
+      mockQueryFn.mockReturnValue((function* () { throw 'string error'; })());
+      const result = await runner.executeRun(makeSetup(), makeScenario(), makeTestRun(), createMockCallbacks());
+
+      expect(result.status).toBe('failed');
+      expect(result.error).toBe('string error');
+    });
+
+    it('returns failed when workspace creation throws', async () => {
+      (workspace.createWorkspace as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('disk full'));
+      const result = await runner.executeRun(makeSetup(), makeScenario(), makeTestRun(), createMockCallbacks());
+
+      expect(result.status).toBe('failed');
+      expect(result.error).toBe('disk full');
+    });
   });
 
   describe('timeout/abort', () => {
@@ -239,6 +255,102 @@ describe('ScenarioRunner', () => {
       expect(opts.persistSession).toBe(false);
       expect(opts.settingSources).toEqual(['project']);
       expect(opts.sandbox).toEqual({ enabled: true, autoAllowBashIfSandboxed: true });
+    });
+
+    it('includes agents option when subagents are defined', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({
+        subagents: [{ name: 'helper', description: 'Helps', prompt: 'You help.' }],
+      });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.agents).toBeDefined();
+      expect((opts.agents as Record<string, unknown>)['helper']).toBeDefined();
+    });
+
+    it('includes mcpServers option when MCP servers are defined', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({
+        mcpServers: [{ name: 'my-mcp', config: { transport: 'stdio', command: 'cmd' } }],
+      });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.mcpServers).toBeDefined();
+      expect((opts.mcpServers as Record<string, unknown>)['my-mcp']).toBeDefined();
+    });
+
+    it('omits agents when subagents is empty', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      await runner.executeRun(makeSetup(), makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.agents).toBeUndefined();
+    });
+
+    it('omits mcpServers when mcpServers is empty', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      await runner.executeRun(makeSetup(), makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.mcpServers).toBeUndefined();
+    });
+
+    it('handles run with no result message (findResultMessage returns undefined)', async () => {
+      const msgs = [
+        { type: 'assistant', message: {}, uuid: UUID, session_id: 's1', parent_tool_use_id: null },
+      ];
+      mockQueryFn.mockReturnValue(createMockQuery(msgs));
+      const result = await runner.executeRun(makeSetup(), makeScenario(), makeTestRun(), createMockCallbacks());
+
+      expect(result.status).toBe('failed');
+      expect(result.error).toBe('Unknown error — no result message');
+    });
+
+    it('passes thinking config for enabled mode', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({ thinking: { kind: 'enabled', budgetTokens: 5000 } });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.thinking).toEqual({ type: 'enabled', budgetTokens: 5000 });
+    });
+
+    it('passes thinking config for disabled mode', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({ thinking: { kind: 'disabled' } });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.thinking).toEqual({ type: 'disabled' });
+    });
+
+    it('omits thinking when not configured', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({ thinking: undefined });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.thinking).toBeUndefined();
+    });
+
+    it('does not set allowDangerouslySkipPermissions for default mode', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({ permissionMode: 'default' });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.allowDangerouslySkipPermissions).toBe(false);
+    });
+
+    it('does not include allowedTools when not set', async () => {
+      mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
+      const setup = makeSetup({ allowedTools: undefined });
+      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+
+      const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
+      expect(opts.allowedTools).toBeUndefined();
     });
   });
 });

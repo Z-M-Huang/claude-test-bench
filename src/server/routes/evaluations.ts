@@ -11,6 +11,10 @@ import type { IEvaluator, EvaluationCallbacks } from '../interfaces/evaluator.js
 import type { Evaluation, EvaluationRequest, EvaluatorConfig, EvaluationStatus } from '../types/index.js';
 import { handleSSEConnection, broadcastSSE, closeSSE } from './run-sse.js';
 import type { SSESubscriberMap } from './run-sse.js';
+import { EvalQueue, validateEvaluatorConfig } from './eval-queue.js';
+
+// Re-export so existing imports from this module continue to work
+export { EvalQueue, validateEvaluatorConfig } from './eval-queue.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -21,104 +25,12 @@ function paramId(req: Request): string {
   return Array.isArray(raw) ? raw[0] : raw;
 }
 
-/** Validate an evaluator config from request body. */
-function validateEvaluatorConfig(raw: unknown): EvaluatorConfig | string {
-  if (!raw || typeof raw !== 'object') return 'Each evaluator must be an object';
-  const obj = raw as Record<string, unknown>;
-  if (!obj.role || typeof obj.role !== 'string') return 'Each evaluator must have a string role';
-  if (!obj.provider || typeof obj.provider !== 'object') return 'Each evaluator must have a provider';
-
-  const provider = obj.provider as Record<string, unknown>;
-  if (!provider.model || typeof provider.model !== 'string') {
-    return 'Each evaluator provider must have a string model';
-  }
-
-  const kind = provider.kind as string | undefined;
-  if (kind === 'api') {
-    if (!provider.apiKey || typeof provider.apiKey !== 'string') {
-      return 'API provider requires apiKey';
-    }
-    if (!provider.baseUrl || typeof provider.baseUrl !== 'string') {
-      return 'API provider requires baseUrl';
-    }
-    return {
-      role: obj.role as string,
-      provider: {
-        kind: 'api',
-        apiKey: provider.apiKey as string,
-        baseUrl: provider.baseUrl as string,
-        model: provider.model as string,
-      },
-    };
-  }
-
-  if (kind === 'oauth') {
-    if (!provider.oauthToken || typeof provider.oauthToken !== 'string') {
-      return 'OAuth provider requires oauthToken';
-    }
-    return {
-      role: obj.role as string,
-      provider: {
-        kind: 'oauth',
-        oauthToken: provider.oauthToken as string,
-        model: provider.model as string,
-      },
-    };
-  }
-
-  return 'Provider kind must be "api" or "oauth"';
-}
-
 /** Strip rounds from evaluation for list endpoint summaries. */
 function evalSummary(
   evaluation: Evaluation,
 ): Omit<Evaluation, 'rounds'> & { rounds?: undefined } {
   const { rounds: _rounds, ...rest } = evaluation;
   return rest;
-}
-
-// ---------------------------------------------------------------------------
-// Queue for evaluation execution
-// ---------------------------------------------------------------------------
-
-interface EvalQueueEntry {
-  evaluation: Evaluation;
-  execute: () => Promise<void>;
-}
-
-export class EvalQueue {
-  private readonly queue: EvalQueueEntry[] = [];
-  private active = 0;
-  private readonly maxConcurrency: number;
-
-  constructor(maxConcurrency = 1) {
-    this.maxConcurrency = maxConcurrency;
-  }
-
-  enqueue(entry: EvalQueueEntry): void {
-    this.queue.push(entry);
-    void this.drain();
-  }
-
-  get pendingCount(): number {
-    return this.queue.length;
-  }
-
-  get activeCount(): number {
-    return this.active;
-  }
-
-  private async drain(): Promise<void> {
-    while (this.active < this.maxConcurrency && this.queue.length > 0) {
-      const next = this.queue.shift();
-      if (!next) break;
-      this.active++;
-      next.execute().finally(() => {
-        this.active--;
-        void this.drain();
-      });
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
