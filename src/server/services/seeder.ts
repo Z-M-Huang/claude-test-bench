@@ -8,6 +8,7 @@ import type { TestSetup } from '../types/index.js';
 /**
  * Seed files that ship with the project under docs/schemas/.
  * Each entry maps a source file to the storage method used to persist it.
+ * Seeding only runs when the respective list is empty — existing data is never overwritten.
  */
 const SEED_SCENARIOS = [
   'scenario-baseline.example.json',
