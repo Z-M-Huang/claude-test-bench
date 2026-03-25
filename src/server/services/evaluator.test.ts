@@ -43,7 +43,7 @@ const mkSetup = (o: Partial<TestSetup> = {}): TestSetup => makeSetup({ ...o });
 
 function mkCallbacks(): EvaluationCallbacks & { statuses: EvaluationStatus[] } {
   const statuses: EvaluationStatus[] = [];
-  return { statuses, onStatusChange: vi.fn((s: EvaluationStatus) => statuses.push(s)) };
+  return { statuses, onStatusChange: vi.fn((s: EvaluationStatus) => statuses.push(s)), onProgress: vi.fn() };
 }
 
 function mockQuery(text: string, cost = 0.01) {

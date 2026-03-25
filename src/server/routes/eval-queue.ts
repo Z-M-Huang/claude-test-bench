@@ -2,59 +2,25 @@
 // EvalQueue — concurrency-limited queue for evaluation execution
 // ---------------------------------------------------------------------------
 
-import type { EvaluatorConfig } from '../types/index.js';
 import type { Evaluation } from '../types/index.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Validate an evaluator config from request body. */
-export function validateEvaluatorConfig(raw: unknown): EvaluatorConfig | string {
+/** Validated evaluator entry from the request body (setupId-based). */
+export interface EvalEntry {
+  readonly setupId: string;
+  readonly role: string;
+}
+
+/** Validate an evaluator entry from request body. Returns parsed entry or error string. */
+export function validateEvalEntry(raw: unknown): EvalEntry | string {
   if (!raw || typeof raw !== 'object') return 'Each evaluator must be an object';
   const obj = raw as Record<string, unknown>;
   if (!obj.role || typeof obj.role !== 'string') return 'Each evaluator must have a string role';
-  if (!obj.provider || typeof obj.provider !== 'object') return 'Each evaluator must have a provider';
-
-  const provider = obj.provider as Record<string, unknown>;
-  if (!provider.model || typeof provider.model !== 'string') {
-    return 'Each evaluator provider must have a string model';
-  }
-
-  const kind = provider.kind as string | undefined;
-  if (kind === 'api') {
-    if (!provider.apiKey || typeof provider.apiKey !== 'string') {
-      return 'API provider requires apiKey';
-    }
-    if (!provider.baseUrl || typeof provider.baseUrl !== 'string') {
-      return 'API provider requires baseUrl';
-    }
-    return {
-      role: obj.role as string,
-      provider: {
-        kind: 'api',
-        apiKey: provider.apiKey as string,
-        baseUrl: provider.baseUrl as string,
-        model: provider.model as string,
-      },
-    };
-  }
-
-  if (kind === 'oauth') {
-    if (!provider.oauthToken || typeof provider.oauthToken !== 'string') {
-      return 'OAuth provider requires oauthToken';
-    }
-    return {
-      role: obj.role as string,
-      provider: {
-        kind: 'oauth',
-        oauthToken: provider.oauthToken as string,
-        model: provider.model as string,
-      },
-    };
-  }
-
-  return 'Provider kind must be "api" or "oauth"';
+  if (!obj.setupId || typeof obj.setupId !== 'string') return 'Each evaluator must have a string setupId';
+  return { setupId: obj.setupId as string, role: obj.role as string };
 }
 
 // ---------------------------------------------------------------------------

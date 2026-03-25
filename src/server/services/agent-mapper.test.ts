@@ -93,6 +93,44 @@ describe('buildAgentsMap', () => {
     expect(result['default-model'].model).toBeUndefined();
   });
 
+  it('maps disallowedTools when non-empty, omits when empty', async () => {
+    const filled = await buildAgentsMap([
+      { name: 'a', description: 'd', prompt: 'p', disallowedTools: ['Bash', 'Write'] },
+    ]);
+    expect(filled['a'].disallowedTools).toEqual(['Bash', 'Write']);
+
+    const empty = await buildAgentsMap([
+      { name: 'b', description: 'd', prompt: 'p', disallowedTools: [] },
+    ]);
+    expect(empty['b'].disallowedTools).toBeUndefined();
+  });
+
+  it('maps mcpServers when non-empty', async () => {
+    const result = await buildAgentsMap([
+      { name: 'a', description: 'd', prompt: 'p', mcpServers: ['github', 'slack'] },
+    ]);
+    expect(result['a'].mcpServers).toEqual(['github', 'slack']);
+  });
+
+  it('maps skills when non-empty', async () => {
+    const result = await buildAgentsMap([
+      { name: 'a', description: 'd', prompt: 'p', skills: ['commit', 'review-pr'] },
+    ]);
+    expect(result['a'].skills).toEqual(['commit', 'review-pr']);
+  });
+
+  it('maps maxTurns when provided, omits when absent', async () => {
+    const filled = await buildAgentsMap([
+      { name: 'a', description: 'd', prompt: 'p', maxTurns: 5 },
+    ]);
+    expect(filled['a'].maxTurns).toBe(5);
+
+    const absent = await buildAgentsMap([
+      { name: 'b', description: 'd', prompt: 'p' },
+    ]);
+    expect(absent['b'].maxTurns).toBeUndefined();
+  });
+
   it('handles multiple subagents', async () => {
     vi.mocked(fs.readFile).mockResolvedValue('File prompt.');
     const subagents: SubagentEntry[] = [

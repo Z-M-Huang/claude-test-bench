@@ -64,6 +64,7 @@ export class EvaluationOrchestrator implements IEvaluator {
     callbacks: EvaluationCallbacks,
   ): Promise<Evaluation> {
     callbacks.onStatusChange('running');
+    callbacks.onProgress('preparing', 'Formatting transcript and parsing instructions...');
 
     const { text: transcript, summary } = formatTranscript(run.messages);
     const instructions = parseAllInstructions([
@@ -77,6 +78,7 @@ export class EvaluationOrchestrator implements IEvaluator {
     }));
 
     // ── Round 1 ──────────────────────────────────────────────────────
+    callbacks.onProgress('scoring', `Running score and compliance queries (${request.evaluators.length} evaluator${request.evaluators.length > 1 ? 's' : ''})...`);
     const round1Evals = await this.runRound1(
       request.evaluators, accumulators, transcript, scenario, setup, instructions, summary,
     );
@@ -89,6 +91,7 @@ export class EvaluationOrchestrator implements IEvaluator {
     // ── Multi-round debate ───────────────────────────────────────────
     if (request.maxRounds > 1 && !round1Consensus) {
       for (let roundNum = 2; roundNum <= request.maxRounds; roundNum++) {
+        callbacks.onProgress('debate', `Debate round ${roundNum} of ${request.maxRounds}...`);
         const debateEvals = await this.runDebateRound(request.evaluators, accumulators, roundNum);
         const consensus = checkConsensus(accumulators);
         rounds.push({
@@ -100,6 +103,7 @@ export class EvaluationOrchestrator implements IEvaluator {
     }
 
     // ── Synthesis ────────────────────────────────────────────────────
+    callbacks.onProgress('synthesis', 'Synthesizing final scores and confidence...');
     // Only pass the latest round's evaluations to avoid multi-vote bias
     const latestRound = rounds[rounds.length - 1];
     const latestEvals = latestRound.evaluations;
@@ -112,6 +116,7 @@ export class EvaluationOrchestrator implements IEvaluator {
       totalTokensIn: a.tokensIn, totalTokensOut: a.tokensOut, roundsParticipated: a.rounds,
     }));
     const now = new Date().toISOString();
+    callbacks.onProgress('complete', 'Evaluation finished.');
     callbacks.onStatusChange('completed');
 
     return {

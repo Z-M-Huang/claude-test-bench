@@ -51,7 +51,11 @@ export interface SubagentEntry {
   readonly description: string;
   readonly prompt: string;
   readonly tools?: readonly string[];
+  readonly disallowedTools?: readonly string[];
   readonly model?: string;
+  readonly mcpServers?: readonly string[];
+  readonly skills?: readonly string[];
+  readonly maxTurns?: number;
   readonly loadFromFile?: string;
 }
 

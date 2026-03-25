@@ -67,11 +67,20 @@ export interface Scenario {
   readonly claudeMdFiles: readonly { role: 'project' | 'user'; content: string }[];
   readonly rules: readonly { name: string; content: string }[];
   readonly skills: readonly { name: string; content: string }[];
-  readonly subagents: readonly { name: string; description: string; prompt: string }[];
+  readonly subagents: readonly {
+    name: string;
+    description: string;
+    prompt: string;
+    disallowedTools?: readonly string[];
+    mcpServers?: readonly string[];
+    skills?: readonly string[];
+    maxTurns?: number;
+  }[];
   readonly mcpServers: readonly { name: string; config: Record<string, unknown> }[];
   readonly permissionMode: string;
   readonly maxTurns?: number;
   readonly allowedTools?: readonly string[];
+  readonly disallowedTools?: readonly string[];
   // Test content
   readonly prompt: string;
   readonly workspaceFiles: readonly WorkspaceFile[];
@@ -128,6 +137,13 @@ export interface EvaluationRequest {
   readonly evaluators: readonly EvaluatorConfig[];
   readonly maxRounds: number;
   readonly maxBudgetUsd?: number;
+}
+
+/** Body sent to POST /api/evaluations (setupId-based, keys resolved server-side). */
+export interface CreateEvaluationBody {
+  readonly runId: string;
+  readonly evaluators: readonly { setupId: string; role: string }[];
+  readonly maxRounds: number;
 }
 
 export interface AnswerComparison {

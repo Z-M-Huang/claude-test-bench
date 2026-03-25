@@ -5,6 +5,10 @@ interface SubagentEntry {
   description: string;
   prompt: string;
   loadFromFile?: string;
+  disallowedTools?: string[];
+  mcpServers?: string[];
+  skills?: string[];
+  maxTurns?: number;
 }
 
 interface Props {
@@ -17,6 +21,61 @@ type SourceMode = 'inline' | 'file';
 const labelCls = 'block text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1.5';
 const inputCls =
   'w-full bg-surface-container-low border border-outline-variant/20 rounded-md px-3 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary-container focus:border-primary-container placeholder:text-outline/50';
+
+/** Comma-separated string <-> string[] helpers. */
+function csvToArr(csv: string): string[] {
+  return csv.split(',').map((s) => s.trim()).filter(Boolean);
+}
+function arrToCsv(arr: readonly string[] | undefined): string {
+  return arr?.join(', ') ?? '';
+}
+
+function AdvancedSection({
+  item,
+  onUpdate,
+}: {
+  item: SubagentEntry;
+  onUpdate: (patch: Partial<SubagentEntry>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasAdvanced = (item.disallowedTools?.length ?? 0) > 0
+    || (item.mcpServers?.length ?? 0) > 0
+    || (item.skills?.length ?? 0) > 0
+    || item.maxTurns !== undefined;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-wider text-on-surface-variant hover:text-on-surface transition-colors"
+      >
+        <span className="material-symbols-outlined transition-transform" style={{ fontSize: '0.8rem', transform: open ? 'rotate(90deg)' : undefined }}>chevron_right</span>
+        Advanced{hasAdvanced ? ' *' : ''}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-3 pl-3 border-l-2 border-outline-variant/20">
+          <div>
+            <label className={labelCls}>Disallowed Tools</label>
+            <input type="text" className={inputCls + ' text-xs'} value={arrToCsv(item.disallowedTools)} placeholder="Bash, Write" onChange={(e) => onUpdate({ disallowedTools: csvToArr(e.target.value).length > 0 ? csvToArr(e.target.value) : undefined })} />
+          </div>
+          <div>
+            <label className={labelCls}>MCP Servers</label>
+            <input type="text" className={inputCls + ' text-xs'} value={arrToCsv(item.mcpServers)} placeholder="github, slack" onChange={(e) => onUpdate({ mcpServers: csvToArr(e.target.value).length > 0 ? csvToArr(e.target.value) : undefined })} />
+          </div>
+          <div>
+            <label className={labelCls}>Skills</label>
+            <input type="text" className={inputCls + ' text-xs'} value={arrToCsv(item.skills)} placeholder="commit, review-pr" onChange={(e) => onUpdate({ skills: csvToArr(e.target.value).length > 0 ? csvToArr(e.target.value) : undefined })} />
+          </div>
+          <div>
+            <label className={labelCls}>Max Turns</label>
+            <input type="number" className={inputCls + ' text-xs max-w-[120px]'} min={1} value={item.maxTurns ?? ''} placeholder="No limit" onChange={(e) => onUpdate({ maxTurns: e.target.value ? Number(e.target.value) : undefined })} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EntryEditor({
   item,
@@ -91,6 +150,8 @@ function EntryEditor({
           onChange={(e) => onUpdate({ loadFromFile: e.target.value || undefined })}
         />
       )}
+
+      <AdvancedSection item={item} onUpdate={onUpdate} />
     </div>
   );
 }

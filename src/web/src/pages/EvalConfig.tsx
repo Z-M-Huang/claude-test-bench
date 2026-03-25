@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import type { ProviderConfig, EvaluatorConfig, Run } from '../types.js';
-import { ProviderConfigEditor } from '../components/ProviderConfig.js';
+import type { Run } from '../types.js';
 
-const defaultProvider: ProviderConfig = {
-  kind: 'api',
-  baseUrl: 'https://api.anthropic.com',
-  apiKey: '',
-  model: 'claude-sonnet-4-20250514',
-};
+/** Summary shape returned by the setups list endpoint (no full provider). */
+interface SetupSummary {
+  id: string;
+  name: string;
+  providerType: string;
+  model: string;
+}
 
 const labelCls = 'block text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1.5';
 const inputCls =
   'w-full bg-surface-container-low border border-outline-variant/20 rounded-md px-3 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary-container focus:border-primary-container placeholder:text-outline/50';
+const selectCls =
+  'w-full bg-surface-container-low border border-outline-variant/20 rounded-md px-3 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary-container focus:border-primary-container';
 
 interface EvalEntry {
-  provider: ProviderConfig;
+  setupId: string;
   role: string;
 }
 
@@ -25,22 +27,25 @@ export function EvalConfig(): React.JSX.Element {
   const navigate = useNavigate();
 
   const [run, setRun] = useState<Run | null>(null);
+  const [setups, setSetups] = useState<SetupSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
-  const [evaluators, setEvaluators] = useState<EvalEntry[]>([
-    { provider: { ...defaultProvider }, role: 'Evaluator' },
-    { provider: { ...defaultProvider }, role: 'Synthesizer' },
-  ]);
+  const [evaluators, setEvaluators] = useState<EvalEntry[]>([]);
   const [maxRounds, setMaxRounds] = useState(3);
-  const [maxBudget, setMaxBudget] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!runId) return;
-    api.runs.get(runId)
-      .then(setRun)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load run'))
+    Promise.all([api.runs.get(runId), api.setups.list()])
+      .then(([r, s]) => {
+        setRun(r);
+        setSetups(s);
+        if (s.length > 0) {
+          setEvaluators([{ setupId: s[0].id, role: 'Synthesizer' }]);
+        }
+      })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load data'))
       .finally(() => setLoading(false));
   }, [runId]);
 
@@ -48,7 +53,6 @@ export function EvalConfig(): React.JSX.Element {
     setEvaluators((prev) =>
       prev.map((e, i) => {
         const updated = i === idx ? { ...e, ...patch } : e;
-        // Last evaluator always labeled Synthesizer
         if (i === prev.length - 1 && updated.role !== 'Synthesizer') {
           return { ...updated, role: 'Synthesizer' };
         }
@@ -58,12 +62,12 @@ export function EvalConfig(): React.JSX.Element {
   }
 
   function addEvaluator() {
+    if (setups.length === 0) return;
     setEvaluators((prev) => {
-      // Relabel previous last as regular evaluator
       const updated = prev.map((e, i) =>
-        i === prev.length - 1 ? { ...e, role: `Evaluator ${prev.length}` } : e,
+        i === prev.length - 1 ? { ...e, role: prev.length > 1 ? `Evaluator ${prev.length}` : 'Evaluator' } : e,
       );
-      return [...updated, { provider: { ...defaultProvider }, role: 'Synthesizer' }];
+      return [...updated, { setupId: setups[0].id, role: 'Synthesizer' }];
     });
   }
 
@@ -71,7 +75,6 @@ export function EvalConfig(): React.JSX.Element {
     if (evaluators.length <= 1) return;
     setEvaluators((prev) => {
       const next = prev.filter((_, i) => i !== idx);
-      // Ensure last is Synthesizer
       return next.map((e, i) =>
         i === next.length - 1 ? { ...e, role: 'Synthesizer' } : e,
       );
@@ -83,15 +86,10 @@ export function EvalConfig(): React.JSX.Element {
     setStarting(true);
     setError(null);
     try {
-      const evaluatorConfigs: EvaluatorConfig[] = evaluators.map((e) => ({
-        provider: e.provider,
-        role: e.role,
-      }));
       const evaluation = await api.evaluations.create({
         runId,
-        evaluators: evaluatorConfigs,
+        evaluators,
         maxRounds,
-        maxBudgetUsd: maxBudget,
       });
       navigate(`/evaluations/${evaluation.id}`);
     } catch (err: unknown) {
@@ -104,7 +102,7 @@ export function EvalConfig(): React.JSX.Element {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-on-surface-variant text-sm animate-pulse">Loading run...</div>
+        <div className="text-on-surface-variant text-sm animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -132,131 +130,113 @@ export function EvalConfig(): React.JSX.Element {
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Evaluator list */}
-        <section className="space-y-4">
-          <h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>groups</span>
-            Evaluators
-          </h2>
-          {evaluators.map((entry, idx) => {
-            const isLast = idx === evaluators.length - 1;
-            return (
-              <div key={idx} className="bg-surface-container rounded-md p-4 space-y-3 border border-outline-variant/10">
-                <div className="flex items-center justify-between">
-                  <span className={'text-xs font-bold uppercase tracking-wider ' + (isLast ? 'text-primary' : 'text-on-surface-variant')}>
-                    {entry.role}
-                    {isLast && <span className="ml-1 text-[0.6rem] normal-case font-normal">(final arbiter)</span>}
-                  </span>
-                  {evaluators.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeEvaluator(idx)}
-                      className="text-error/70 hover:text-error transition-colors p-1"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
-                    </button>
-                  )}
-                </div>
-                {!isLast && (
-                  <div>
-                    <label className={labelCls}>Role Name</label>
-                    <input
-                      type="text"
-                      className={inputCls + ' max-w-[240px]'}
-                      value={entry.role}
-                      onChange={(e) => updateEvaluator(idx, { role: e.target.value })}
-                    />
-                  </div>
-                )}
-                <ProviderConfigEditor
-                  value={entry.provider}
-                  onChange={(provider) => updateEvaluator(idx, { provider })}
-                />
-              </div>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={addEvaluator}
-            className="w-full py-2 border border-dashed border-outline-variant/30 rounded-md text-xs font-bold text-on-surface-variant hover:text-on-surface hover:border-outline-variant/60 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>add</span>
-            Add Evaluator
-          </button>
-        </section>
-
-        {/* Settings */}
-        <section className="space-y-4">
-          <h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>settings</span>
-            Settings
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Max Rounds (1-5)</label>
-              <input
-                type="number"
-                className={inputCls + ' max-w-[120px]'}
-                min={1}
-                max={5}
-                value={maxRounds}
-                onChange={(e) => setMaxRounds(Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
-              />
-              <input
-                type="range"
-                className="w-full mt-2 accent-primary-container"
-                min={1}
-                max={5}
-                value={maxRounds}
-                onChange={(e) => setMaxRounds(Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Max Budget (USD, optional)</label>
-              <input
-                type="number"
-                className={inputCls + ' max-w-[160px]'}
-                min={0}
-                step={0.01}
-                value={maxBudget ?? ''}
-                placeholder="No limit"
-                onChange={(e) => setMaxBudget(e.target.value ? Number(e.target.value) : undefined)}
-              />
-            </div>
-          </div>
-
-          <div className="text-xs text-on-surface-variant bg-surface-container rounded-md p-3">
-            <span className="material-symbols-outlined text-primary/60 mr-1" style={{ fontSize: '0.9rem', verticalAlign: 'middle' }}>
-              info
-            </span>
-            Estimated cost: {evaluators.length} evaluator{evaluators.length > 1 ? 's' : ''} x {maxRounds} round{maxRounds > 1 ? 's' : ''} = up to {evaluators.length * maxRounds} API calls.
-          </div>
-        </section>
-
-        {/* Start button */}
-        <div className="flex items-center gap-3 pt-4 border-t border-outline-variant/10">
-          <button
-            type="button"
-            onClick={() => void handleStart()}
-            disabled={starting}
-            className="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-bold text-sm hover:bg-primary transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {starting && (
-              <span className="material-symbols-outlined animate-spin" style={{ fontSize: '1rem' }}>progress_activity</span>
-            )}
-            Start Evaluation
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(`/runs/${runId}`)}
-            className="text-on-surface-variant hover:text-on-surface text-sm font-medium transition-colors px-4 py-2.5"
-          >
-            Cancel
-          </button>
+      {setups.length === 0 ? (
+        <div className="bg-surface-container rounded-md p-6 text-center text-on-surface-variant text-sm">
+          No setups available. Create a setup first to use as an evaluator.
         </div>
-      </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Evaluator list */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>groups</span>
+              Evaluators
+            </h2>
+            {evaluators.map((entry, idx) => {
+              const isLast = idx === evaluators.length - 1;
+              return (
+                <div key={idx} className="bg-surface-container rounded-md p-4 space-y-3 border border-outline-variant/10">
+                  <div className="flex items-center justify-between">
+                    <span className={'text-xs font-bold uppercase tracking-wider ' + (isLast ? 'text-primary' : 'text-on-surface-variant')}>
+                      {entry.role}
+                      {isLast && <span className="ml-1 text-[0.6rem] normal-case font-normal">(final arbiter)</span>}
+                    </span>
+                    {evaluators.length > 1 && (
+                      <button type="button" onClick={() => removeEvaluator(idx)} className="text-error/70 hover:text-error transition-colors p-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
+                      </button>
+                    )}
+                  </div>
+                  {!isLast && (
+                    <div>
+                      <label className={labelCls}>Role Name</label>
+                      <input type="text" className={inputCls + ' max-w-[240px]'} value={entry.role} onChange={(e) => updateEvaluator(idx, { role: e.target.value })} />
+                    </div>
+                  )}
+                  <div>
+                    <label className={labelCls}>Setup</label>
+                    <select className={selectCls} value={entry.setupId} onChange={(e) => updateEvaluator(idx, { setupId: e.target.value })}>
+                      {setups.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.model})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={addEvaluator}
+              className="w-full py-2 border border-dashed border-outline-variant/30 rounded-md text-xs font-bold text-on-surface-variant hover:text-on-surface hover:border-outline-variant/60 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>add</span>
+              Add Evaluator
+            </button>
+          </section>
+
+          {/* Settings */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>settings</span>
+              Settings
+            </h2>
+            <div>
+              <label className={labelCls}>Max Debate Rounds (1-5)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  className="flex-1 accent-primary-container max-w-[200px]"
+                  min={1}
+                  max={5}
+                  value={maxRounds}
+                  onChange={(e) => setMaxRounds(Number(e.target.value))}
+                />
+                <span className="text-sm font-mono text-on-surface w-4 text-center">{maxRounds}</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-on-surface-variant bg-surface-container rounded-md p-3">
+              <span className="material-symbols-outlined text-primary/60 mr-1" style={{ fontSize: '0.9rem', verticalAlign: 'middle' }}>
+                info
+              </span>
+              {evaluators.length} evaluator{evaluators.length > 1 ? 's' : ''} x {maxRounds} round{maxRounds > 1 ? 's' : ''} = up to {evaluators.length * maxRounds} API calls.
+            </div>
+          </section>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-4 border-t border-outline-variant/10">
+            <button
+              type="button"
+              onClick={() => void handleStart()}
+              disabled={starting || evaluators.length === 0}
+              className="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-bold text-sm hover:bg-primary transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {starting && (
+                <span className="material-symbols-outlined animate-spin" style={{ fontSize: '1rem' }}>progress_activity</span>
+              )}
+              Start Evaluation
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/runs/${runId}`)}
+              className="text-on-surface-variant hover:text-on-surface text-sm font-medium transition-colors px-4 py-2.5"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

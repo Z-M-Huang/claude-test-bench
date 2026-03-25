@@ -8,7 +8,7 @@ import type {
   Run,
   RunStatus,
   Evaluation,
-  EvaluationRequest,
+  CreateEvaluationBody,
 } from './types.js';
 
 const BASE = window.location.origin;
@@ -104,7 +104,7 @@ export const api = {
     list: (filters?: EvaluationFilters) =>
       get<Evaluation[]>(`/api/evaluations${toQuery(filters ?? {})}`),
     get: (id: string) => get<Evaluation>(`/api/evaluations/${id}`),
-    create: (body: EvaluationRequest) =>
+    create: (body: CreateEvaluationBody) =>
       post<Evaluation>('/api/evaluations', body),
   },
 } as const;

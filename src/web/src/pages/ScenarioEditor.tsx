@@ -40,6 +40,7 @@ const emptyAgentConfig: AgentConfigValues = {
   permissionMode: 'acceptEdits',
   maxTurns: undefined,
   deniedTools: [],
+  disallowedTools: [],
 };
 
 const emptyForm: FormState = {
@@ -93,6 +94,7 @@ export function ScenarioEditor(): React.JSX.Element {
           permissionMode: sc.permissionMode,
           maxTurns: sc.maxTurns,
           deniedTools: toDenied(sc.allowedTools),
+          disallowedTools: sc.disallowedTools ? [...sc.disallowedTools] : [],
         },
         prompt: sc.prompt,
         workspaceFiles: [...sc.workspaceFiles], expectedAnswer: sc.expectedAnswer,
@@ -120,6 +122,7 @@ export function ScenarioEditor(): React.JSX.Element {
         permissionMode: agentConfig.permissionMode,
         maxTurns: agentConfig.maxTurns,
         allowedTools: toAllowed(agentConfig.deniedTools),
+        disallowedTools: agentConfig.disallowedTools.length > 0 ? agentConfig.disallowedTools : undefined,
       };
       if (isNew) {
         const created = await api.scenarios.create(payload);

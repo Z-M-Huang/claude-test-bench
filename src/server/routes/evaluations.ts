@@ -11,10 +11,11 @@ import type { IEvaluator, EvaluationCallbacks } from '../interfaces/evaluator.js
 import type { Evaluation, EvaluationRequest, EvaluatorConfig, EvaluationStatus } from '../types/index.js';
 import { handleSSEConnection, broadcastSSE, closeSSE } from './run-sse.js';
 import type { SSESubscriberMap } from './run-sse.js';
-import { EvalQueue, validateEvaluatorConfig } from './eval-queue.js';
+import { EvalQueue, validateEvalEntry } from './eval-queue.js';
+import type { EvalEntry } from './eval-queue.js';
 
 // Re-export so existing imports from this module continue to work
-export { EvalQueue, validateEvaluatorConfig } from './eval-queue.js';
+export { EvalQueue, validateEvalEntry } from './eval-queue.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,21 +65,32 @@ export function createEvaluationRoutes(
         return;
       }
 
-      // Validate evaluators
+      // Validate evaluator entries (setupId + role)
       const rawEvaluators = body.evaluators;
       if (!Array.isArray(rawEvaluators) || rawEvaluators.length === 0) {
         res.status(400).json({ error: 'evaluators must be a non-empty array' });
         return;
       }
 
-      const evaluators: EvaluatorConfig[] = [];
+      const entries: EvalEntry[] = [];
       for (const raw of rawEvaluators) {
-        const result = validateEvaluatorConfig(raw);
+        const result = validateEvalEntry(raw);
         if (typeof result === 'string') {
           res.status(400).json({ error: result });
           return;
         }
-        evaluators.push(result);
+        entries.push(result);
+      }
+
+      // Resolve setupIds to real providers
+      const evaluators: EvaluatorConfig[] = [];
+      for (const entry of entries) {
+        const setup = await storage.getSetup(entry.setupId);
+        if (!setup) {
+          res.status(404).json({ error: `Setup not found: ${entry.setupId}` });
+          return;
+        }
+        evaluators.push({ provider: setup.provider, role: entry.role });
       }
 
       // Validate maxRounds
@@ -129,7 +141,7 @@ export function createEvaluationRoutes(
                 status,
                 updatedAt: new Date().toISOString(),
               };
-              broadcastSSE(evaluation.id, 'status', status, sseSubscribers);
+              broadcastSSE(evaluation.id, 'message', { type: 'status', status }, sseSubscribers);
               storage.saveEvaluation(updatedEval).catch((saveErr) => {
                 logger.error('Failed to persist evaluation status change', {
                   evalId: evaluation.id,
@@ -137,6 +149,9 @@ export function createEvaluationRoutes(
                   error: String(saveErr),
                 });
               });
+            },
+            onProgress(step: string, detail?: string) {
+              broadcastSSE(evaluation.id, 'message', { type: 'progress', step, detail }, sseSubscribers);
             },
           };
 
@@ -150,7 +165,7 @@ export function createEvaluationRoutes(
             await storage.saveEvaluation(finalEval);
           } catch (err) {
             logger.error('Evaluation failed', { evalId: evaluation.id, error: String(err) });
-            broadcastSSE(evaluation.id, 'status', 'failed', sseSubscribers);
+            broadcastSSE(evaluation.id, 'message', { type: 'status', status: 'failed' }, sseSubscribers);
             const failedEval: Evaluation = {
               ...evaluation,
               status: 'failed',

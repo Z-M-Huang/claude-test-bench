@@ -30,8 +30,24 @@ export async function buildAgentsMap(
       def.tools = [...sa.tools];
     }
 
+    if (sa.disallowedTools && sa.disallowedTools.length > 0) {
+      def.disallowedTools = [...sa.disallowedTools];
+    }
+
     if (sa.model) {
       def.model = sa.model;
+    }
+
+    if (sa.mcpServers && sa.mcpServers.length > 0) {
+      def.mcpServers = [...sa.mcpServers];
+    }
+
+    if (sa.skills && sa.skills.length > 0) {
+      def.skills = [...sa.skills];
+    }
+
+    if (sa.maxTurns !== undefined) {
+      def.maxTurns = sa.maxTurns;
     }
 
     result[sa.name] = def;

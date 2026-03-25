@@ -155,7 +155,7 @@ export function createRunRoutes(
                 status,
                 updatedAt: new Date().toISOString(),
               };
-              broadcastSSE(run.id, 'status', status, sseSubscribers);
+              broadcastSSE(run.id, 'message', { type: 'status', status }, sseSubscribers);
               storage.saveRun(updatedRun).catch((saveErr) => {
                 logger.error('Failed to persist status change', {
                   runId: run.id,
@@ -169,6 +169,9 @@ export function createRunRoutes(
           try {
             const result = await runner.executeRun(setup, scenario, run, callbacks, abortController);
             await storage.saveRun(result);
+
+            // Broadcast completed/failed run to SSE clients
+            broadcastSSE(run.id, 'message', { type: 'runComplete', run: runSummary(result) }, sseSubscribers);
 
             // Auto-trigger evaluation if reviewer setups were configured
             if (result.status === 'completed' && evaluator && reviewerSetupSnapshots && reviewerSetupSnapshots.length > 0) {
@@ -212,7 +215,7 @@ export function createRunRoutes(
                 await storage.saveRun(linkedRun);
 
                 // Broadcast the evaluation ID to SSE subscribers
-                broadcastSSE(run.id, 'evaluation', { evaluationId: evaluation.id }, sseSubscribers);
+                broadcastSSE(run.id, 'message', { type: 'evaluation', evaluationId: evaluation.id }, sseSubscribers);
 
                 // Enqueue evaluation execution
                 evalQueue.enqueue({
@@ -220,7 +223,7 @@ export function createRunRoutes(
                   execute: async () => {
                     const evalCallbacks: EvaluationCallbacks = {
                       onStatusChange(evalStatus: EvaluationStatus) {
-                        broadcastSSE(run.id, 'evalStatus', evalStatus, sseSubscribers);
+                        broadcastSSE(run.id, 'message', { type: 'evalStatus', status: evalStatus }, sseSubscribers);
                         const updatedEval: Evaluation = {
                           ...evaluation,
                           status: evalStatus,
@@ -233,6 +236,7 @@ export function createRunRoutes(
                           });
                         });
                       },
+                      onProgress() { /* progress not streamed on run SSE */ },
                     };
 
                     try {
@@ -245,7 +249,8 @@ export function createRunRoutes(
                         updatedAt: new Date().toISOString(),
                       };
                       await storage.saveEvaluation(finalEval);
-                      broadcastSSE(run.id, 'evalComplete', { evaluationId: evaluation.id }, sseSubscribers);
+                      broadcastSSE(run.id, 'message', { type: 'evalComplete', evaluationId: evaluation.id }, sseSubscribers);
+                      closeSSE(run.id, sseSubscribers);
                     } catch (evalErr) {
                       logger.error('Auto-evaluation failed', {
                         runId: run.id,
@@ -258,6 +263,7 @@ export function createRunRoutes(
                         updatedAt: new Date().toISOString(),
                       };
                       await storage.saveEvaluation(failedEval).catch(() => {});
+                      closeSSE(run.id, sseSubscribers);
                     }
                   },
                 });

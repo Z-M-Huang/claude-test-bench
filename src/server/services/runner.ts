@@ -88,6 +88,10 @@ export class ScenarioRunner implements IRunner {
         options.allowedTools = [...scenario.allowedTools];
       }
 
+      if (scenario.disallowedTools && scenario.disallowedTools.length > 0) {
+        options.disallowedTools = [...scenario.disallowedTools];
+      }
+
       if (Object.keys(agents).length > 0) {
         options.agents = agents;
       }

@@ -8,6 +8,30 @@ interface Props {
   loading?: boolean;
 }
 
+/** Extract the inner message from SDK envelope. SDK yields { type, message: { role, content } }. */
+function unwrap(msg: Record<string, unknown>): { type: string; role?: string; content?: unknown; raw: Record<string, unknown> } {
+  const type = (msg.type as string) ?? '';
+  const inner = msg.message as Record<string, unknown> | undefined;
+
+  // If there's a nested `message` object (SDK envelope), use it for role/content
+  if (inner && typeof inner === 'object') {
+    return {
+      type,
+      role: (inner.role as string) ?? undefined,
+      content: inner.content,
+      raw: msg,
+    };
+  }
+
+  // Flat message (role/content at top level)
+  return {
+    type,
+    role: (msg.role as string) ?? undefined,
+    content: msg.content,
+    raw: msg,
+  };
+}
+
 function renderContentBlock(block: Record<string, unknown>, idx: number): React.JSX.Element | null {
   const blockType = block.type as string | undefined;
 
@@ -31,6 +55,7 @@ function renderContentBlock(block: Record<string, unknown>, idx: number): React.
 
   if (blockType === 'tool_result') {
     const content = block.content;
+    const isError = block.is_error === true;
     const text = typeof content === 'string'
       ? content
       : Array.isArray(content)
@@ -42,7 +67,7 @@ function renderContentBlock(block: Record<string, unknown>, idx: number): React.
     return (
       <ToolCallBlock
         key={idx}
-        name="Result"
+        name={isError ? 'Error' : 'Result'}
         output={text}
       />
     );
@@ -55,14 +80,52 @@ function renderContentBlock(block: Record<string, unknown>, idx: number): React.
   return null;
 }
 
-function MessageEntry({ record }: { record: SDKMessageRecord }): React.JSX.Element {
-  const msg = record.message;
-  const role = msg.role as string | undefined;
-  const type = msg.type as string | undefined;
-  const content = msg.content;
+/** Extract readable text from content (string or content blocks array). */
+function extractText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return (content as Record<string, unknown>[])
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text as string)
+      .join('\n');
+  }
+  return JSON.stringify(content);
+}
 
-  // Assistant message with content blocks
-  if (role === 'assistant' || type === 'assistant') {
+function MessageEntry({ record }: { record: SDKMessageRecord }): React.JSX.Element {
+  const { type, role, content, raw } = unwrap(record.message);
+
+  // ── System messages: show compact or hide ──
+  if (type === 'system') {
+    const subtype = raw.subtype as string | undefined;
+    // Hide init/api_retry noise
+    if (subtype === 'init') {
+      return (
+        <div className="text-[0.65rem] text-on-surface-variant/40 font-mono pl-9 flex items-center gap-2">
+          <span className="material-symbols-outlined" style={{ fontSize: '0.7rem' }}>terminal</span>
+          Session initialized
+        </div>
+      );
+    }
+    if (subtype === 'api_retry') {
+      const attempt = raw.attempt as number | undefined;
+      const error = raw.error as string | undefined;
+      return (
+        <div className="text-[0.65rem] text-warning/60 font-mono pl-9 flex items-center gap-2">
+          <span className="material-symbols-outlined" style={{ fontSize: '0.7rem' }}>refresh</span>
+          API retry #{attempt ?? '?'}{error ? `: ${error}` : ''}
+        </div>
+      );
+    }
+    return (
+      <div className="text-[0.65rem] text-on-surface-variant/40 font-mono pl-9">
+        system: {subtype ?? JSON.stringify(raw).slice(0, 120)}
+      </div>
+    );
+  }
+
+  // ── Assistant messages ──
+  if (type === 'assistant' || role === 'assistant') {
     const blocks = Array.isArray(content) ? (content as Record<string, unknown>[]) : [];
     const textOnly = typeof content === 'string';
 
@@ -78,47 +141,32 @@ function MessageEntry({ record }: { record: SDKMessageRecord }): React.JSX.Eleme
             </div>
           )}
           {blocks.map((block, idx) => renderContentBlock(block, idx))}
+          {!textOnly && blocks.length === 0 && (
+            <div className="text-xs text-on-surface-variant/50 italic">
+              (assistant message)
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Tool use message (top-level)
-  if (type === 'tool_use') {
-    return (
-      <div className="ml-9">
-        <ToolCallBlock
-          name={(msg.name as string) ?? 'unknown'}
-          input={msg.input}
-          output={msg.output}
-        />
-      </div>
-    );
-  }
+  // ── User messages (includes tool results fed back to the model) ──
+  if (type === 'user' || role === 'user' || role === 'human') {
+    // Content is often an array of tool_result blocks
+    if (Array.isArray(content)) {
+      const blocks = content as Record<string, unknown>[];
+      const hasToolResults = blocks.some((b) => b.type === 'tool_result');
+      if (hasToolResults) {
+        return (
+          <div className="ml-9 space-y-1">
+            {blocks.map((block, idx) => renderContentBlock(block, idx))}
+          </div>
+        );
+      }
+    }
 
-  // Tool result message (top-level)
-  if (role === 'tool' || type === 'tool_result') {
-    const resultContent = msg.content ?? msg.output;
-    const text = typeof resultContent === 'string'
-      ? resultContent
-      : JSON.stringify(resultContent);
-    return (
-      <div className="ml-9">
-        <ToolCallBlock name="Result" output={text} />
-      </div>
-    );
-  }
-
-  // User / human message
-  if (role === 'user' || role === 'human') {
-    const text = typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-        ? (content as Record<string, unknown>[])
-            .filter((c) => c.type === 'text')
-            .map((c) => c.text as string)
-            .join('\n')
-        : JSON.stringify(content);
+    const text = extractText(content);
     return (
       <div className="flex gap-3">
         <div className="w-6 h-6 rounded-full bg-secondary-container/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -131,24 +179,29 @@ function MessageEntry({ record }: { record: SDKMessageRecord }): React.JSX.Eleme
     );
   }
 
-  // Result summary
+  // ── Result summary ──
   if (type === 'result') {
+    const subtype = raw.subtype as string | undefined;
+    const result = raw.result as string | undefined;
+    const isSuccess = subtype === 'success';
     return (
       <div className="flex gap-3">
-        <div className="w-6 h-6 rounded-full bg-green-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <span className="material-symbols-outlined text-green-400" style={{ fontSize: '0.8rem' }}>check</span>
+        <div className={'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ' + (isSuccess ? 'bg-green-400/20' : 'bg-error/20')}>
+          <span className={'material-symbols-outlined ' + (isSuccess ? 'text-green-400' : 'text-error')} style={{ fontSize: '0.8rem' }}>
+            {isSuccess ? 'check' : 'error'}
+          </span>
         </div>
-        <div className="text-sm text-green-400/80 whitespace-pre-wrap">
-          {typeof content === 'string' ? content : JSON.stringify(content)}
+        <div className={'text-sm whitespace-pre-wrap ' + (isSuccess ? 'text-green-400/80' : 'text-error/80')}>
+          {result ?? (typeof content === 'string' ? content : JSON.stringify(content))}
         </div>
       </div>
     );
   }
 
-  // Default: system event
+  // ── Default: unknown event type ──
   return (
-    <div className="text-[0.7rem] text-on-surface-variant/50 font-mono pl-9">
-      {type ?? role ?? 'event'}: {typeof content === 'string' ? content : JSON.stringify(msg)}
+    <div className="text-[0.65rem] text-on-surface-variant/50 font-mono pl-9 truncate">
+      {type || role || 'event'}: {JSON.stringify(raw).slice(0, 200)}
     </div>
   );
 }

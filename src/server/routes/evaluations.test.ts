@@ -31,14 +31,14 @@ const mkEval = (o: Partial<Evaluation> = {}): Evaluation => ({
 
 const mkMockEvaluator = (): IEvaluator => ({
   evaluateRun: vi.fn().mockImplementation((_run, _sc, _su, _req, cb) => {
-    cb.onStatusChange('running'); cb.onStatusChange('completed');
+    cb.onStatusChange('running'); cb.onProgress('scoring'); cb.onStatusChange('completed');
     return Promise.resolve(mkEval());
   }),
 });
 
 const validBody = () => ({
   role: 'primary',
-  provider: { kind: 'api', apiKey: process.env.TEST_API_KEY ?? 'test-fixture', baseUrl: 'https://api.example.com', model: 'claude-sonnet-4-6' },
+  setupId: 'setup-1',
 });
 
 function createApp(storage: IStorage, evaluator: IEvaluator, logger: ILogger, queue?: EvalQueue) {
@@ -67,6 +67,7 @@ describe('Evaluation routes', () => {
   describe('POST /api/evaluations', () => {
     it('creates an evaluation and returns 202', async () => {
       vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+      vi.mocked(storage.getSetup).mockResolvedValue(makeSetup());
       vi.mocked(storage.saveEvaluation).mockResolvedValue(undefined);
 
       const res = await request(app)
@@ -81,6 +82,7 @@ describe('Evaluation routes', () => {
 
     it('starts evaluation asynchronously', async () => {
       vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+      vi.mocked(storage.getSetup).mockResolvedValue(makeSetup());
       vi.mocked(storage.saveEvaluation).mockResolvedValue(undefined);
 
       await request(app)
@@ -129,15 +131,42 @@ describe('Evaluation routes', () => {
         .post('/api/evaluations')
         .send({
           runId: 'run-1',
-          evaluators: [{ provider: { kind: 'api', model: 'test' } }],
+          evaluators: [{ setupId: 'setup-1' }],
         });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('role');
     });
 
+    it('returns 400 when evaluator is missing setupId', async () => {
+      vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+
+      const res = await request(app)
+        .post('/api/evaluations')
+        .send({
+          runId: 'run-1',
+          evaluators: [{ role: 'primary' }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('setupId');
+    });
+
+    it('returns 404 when evaluator setup does not exist', async () => {
+      vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+      vi.mocked(storage.getSetup).mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .post('/api/evaluations')
+        .send({ runId: 'run-1', evaluators: [validBody()] });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toContain('Setup not found');
+    });
+
     it('returns 400 when maxRounds is out of range', async () => {
       vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+      vi.mocked(storage.getSetup).mockResolvedValue(makeSetup());
 
       const res = await request(app)
         .post('/api/evaluations')
@@ -149,6 +178,7 @@ describe('Evaluation routes', () => {
 
     it('returns 400 when maxRounds is 0', async () => {
       vi.mocked(storage.getRun).mockResolvedValue(mkRun());
+      vi.mocked(storage.getSetup).mockResolvedValue(makeSetup());
 
       const res = await request(app)
         .post('/api/evaluations')
@@ -156,40 +186,6 @@ describe('Evaluation routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('maxRounds');
-    });
-
-    it('validates OAuth provider config', async () => {
-      vi.mocked(storage.getRun).mockResolvedValue(mkRun());
-
-      const res = await request(app)
-        .post('/api/evaluations')
-        .send({
-          runId: 'run-1',
-          evaluators: [{
-            role: 'evaluator',
-            provider: { kind: 'oauth', model: 'claude-sonnet-4-6' },
-          }],
-        });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain('oauthToken');
-    });
-
-    it('returns 400 for invalid provider kind', async () => {
-      vi.mocked(storage.getRun).mockResolvedValue(mkRun());
-
-      const res = await request(app)
-        .post('/api/evaluations')
-        .send({
-          runId: 'run-1',
-          evaluators: [{
-            role: 'evaluator',
-            provider: { kind: 'invalid', model: 'test' },
-          }],
-        });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain('kind');
     });
   });
 

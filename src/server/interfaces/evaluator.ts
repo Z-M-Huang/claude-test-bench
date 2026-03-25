@@ -9,6 +9,7 @@ import type {
 
 export interface EvaluationCallbacks {
   onStatusChange(status: EvaluationStatus): void;
+  onProgress(step: string, detail?: string): void;
 }
 
 export interface IEvaluator {

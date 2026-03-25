@@ -17,12 +17,23 @@ export interface AgentConfigValues {
   claudeMdFiles: { role: 'project' | 'user'; content: string; loadFromFile?: string }[];
   rules: NameContentEntry[];
   skills: NameContentEntry[];
-  subagents: { name: string; description: string; prompt: string; loadFromFile?: string }[];
+  subagents: {
+    name: string;
+    description: string;
+    prompt: string;
+    loadFromFile?: string;
+    disallowedTools?: string[];
+    mcpServers?: string[];
+    skills?: string[];
+    maxTurns?: number;
+  }[];
   mcpServers: { name: string; config: Record<string, unknown> }[];
   permissionMode: string;
   maxTurns?: number;
   /** Tools to deny. Stored as deniedTools in the UI; converted to allowedTools for the API. */
   deniedTools: string[];
+  /** SDK disallowedTools — completely removes tools from the model's context. */
+  disallowedTools: string[];
 }
 
 interface Props {
@@ -169,6 +180,25 @@ export function AgentConfigSection({ value, onChange, readOnly }: Props): React.
               );
             })}
           </div>
+        </div>
+
+        {/* Disallowed Tools (SDK blocklist — completely removes from model context) */}
+        <div>
+          <label className={labelCls}>Disallowed Tools (SDK Blocklist)</label>
+          <p className="text-[0.6rem] text-on-surface-variant mb-2 -mt-1">
+            Comma-separated tool names to completely remove from the model context. Unlike denied tools above, these won't exist at all.
+          </p>
+          <input
+            type="text"
+            className={inputCls}
+            value={value.disallowedTools.join(', ')}
+            placeholder="e.g. WebSearch, WebFetch"
+            readOnly={readOnly}
+            onChange={(e) => {
+              const tools = e.target.value.split(',').map((t) => t.trim()).filter(Boolean);
+              patch({ disallowedTools: tools });
+            }}
+          />
         </div>
       </div>
     </div>

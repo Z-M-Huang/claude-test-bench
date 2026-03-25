@@ -43,6 +43,7 @@ export interface Scenario {
   readonly permissionMode: PermissionMode;
   readonly maxTurns?: number;
   readonly allowedTools?: readonly string[];
+  readonly disallowedTools?: readonly string[];
   // Test content
   readonly prompt: string;
   readonly workspaceFiles: readonly WorkspaceFile[];
