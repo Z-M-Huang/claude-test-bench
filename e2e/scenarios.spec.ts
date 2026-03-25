@@ -47,31 +47,29 @@ test.describe('Scenario features', () => {
     expect(foundCount).toBeGreaterThanOrEqual(1);
   });
 
-  test('built-in scenarios are visible', async ({ page }) => {
+  test('seeded scenarios are visible in list', async ({ page }) => {
     await gotoScenarioList(page);
-    // Built-in scenarios show a "Built-in" badge
-    const builtInBadges = page.getByText('Built-in');
-    const count = await builtInBadges.count();
+    // Seeded scenarios should appear in the list
+    const scenarioCards = page.locator('section h3');
+    const count = await scenarioCards.count();
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
-  test('clicking a built-in scenario opens it in read-only mode', async ({ page }) => {
+  test('clicking a seeded scenario opens it for editing', async ({ page }) => {
     await gotoScenarioList(page);
 
-    // Click the first scenario card -- use the card's h3 name
+    // Click the first scenario card
     const firstCardName = page.locator('section h3').first();
     await firstCardName.click();
 
     // Should navigate to /scenarios/:id
-    await expect(page).toHaveURL(/\/scenarios\/[a-f0-9-]+$/);
+    await expect(page).toHaveURL(/\/scenarios\/[a-z0-9-]+$/);
 
-    // Wait for scenario editor to load
-    await expect(page.getByText('View Scenario')).toBeVisible({ timeout: 10000 });
-    // Should say read-only
-    await expect(page.getByText('This built-in scenario is read-only.')).toBeVisible();
+    // Wait for scenario editor to load — seeded scenarios are editable
+    await expect(page.getByText('Edit Scenario')).toBeVisible({ timeout: 10000 });
 
-    // Save button should NOT be present for read-only
-    await expect(page.getByRole('button', { name: 'Save Scenario' })).not.toBeVisible();
+    // Save button should be present for editable scenarios
+    await expect(page.getByRole('button', { name: 'Save Scenario' })).toBeVisible();
   });
 
   test('New Scenario button navigates to /scenarios/new', async ({ page }) => {
@@ -101,7 +99,9 @@ test.describe('Scenario features', () => {
     await nameInput.fill('E2E Test Scenario');
     await expect(nameInput).toHaveValue('E2E Test Scenario');
 
-    const categorySelect = page.locator('select');
+    // Target the category select specifically (inside the Basic Information section)
+    const basicSection = page.locator('section').filter({ hasText: 'Basic Information' });
+    const categorySelect = basicSection.locator('select').first();
     await categorySelect.selectOption('custom');
     await expect(categorySelect).toHaveValue('custom');
   });
@@ -111,10 +111,14 @@ test.describe('Scenario features', () => {
     await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Create New Scenario')).toBeVisible({ timeout: 10000 });
 
-    // Find the Workspace Files section and click its Add button
-    // The DynamicList "Add" button is inside a div that follows the SectionHead with "Workspace Files"
-    const wsSection = page.locator('section').filter({ hasText: 'Workspace Files' }).last();
-    await wsSection.locator('button', { hasText: 'Add' }).click();
+    // The DynamicList for workspace files has label="" so we need to find the Add button
+    // that is NOT one of the agent config Add buttons (Add CLAUDE.md, Add Rule, etc.)
+    // The workspace files section is identified by its SectionHead "Workspace Files"
+    // Use the heading text to find the right container, then click the sibling Add button
+    const wsHeading = page.getByText('Workspace Files', { exact: true });
+    // The DynamicList Add button is in the same bg-surface-container div
+    const wsAdd = wsHeading.locator('..').locator('..').getByRole('button', { name: 'add Add', exact: true });
+    await wsAdd.click();
 
     // A file entry should appear with path and content inputs
     const pathInput = page.locator('input[placeholder*="src/path"]');
@@ -202,7 +206,8 @@ test.describe('Scenario features', () => {
     await expect(page.getByText('Create New Scenario')).toBeVisible({ timeout: 10000 });
 
     await page.locator('input[placeholder*="complex_math"]').fill('E2E Custom Scenario');
-    await page.locator('select').selectOption('custom');
+    const basicSection = page.locator('section').filter({ hasText: 'Basic Information' });
+    await basicSection.locator('select').first().selectOption('custom');
 
     // Fill the prompt via the CodeEditor textarea
     const promptTextarea = page.locator('textarea[placeholder="Enter the user test prompt here..."]');
@@ -260,39 +265,6 @@ test.describe('Scenario features', () => {
     await expect(page.locator('button', { hasText: 'New Scenario' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Loading scenarios...')).not.toBeVisible({ timeout: 10000 });
     await expect(page.getByText('E2E Custom Scenario Updated')).not.toBeVisible();
-  });
-
-  test('built-in scenario fields are read-only', async ({ page }) => {
-    await gotoScenarioList(page);
-
-    // Click the first built-in scenario -- use the h3 inside a section
-    const firstCardName = page.locator('section h3').first();
-    await firstCardName.click();
-
-    // Wait for scenario editor to load
-    await expect(page.getByText('View Scenario')).toBeVisible({ timeout: 10000 });
-
-    // Name field should be read-only
-    const nameInput = page.locator('input[placeholder*="complex_math"]');
-    await expect(nameInput).toHaveAttribute('readonly', '');
-
-    // Category select should be disabled
-    const categorySelect = page.locator('select');
-    await expect(categorySelect).toBeDisabled();
-  });
-
-  test('cannot delete built-in scenario via API', async ({ request }) => {
-    // Get all scenarios
-    const listRes = await request.get('/api/scenarios');
-    const scenarios = await listRes.json();
-    const builtIn = scenarios.find((s: { builtIn: boolean }) => s.builtIn);
-    if (!builtIn) {
-      test.skip();
-      return;
-    }
-
-    const deleteRes = await request.delete(`/api/scenarios/${builtIn.id}`);
-    expect(deleteRes.status()).toBe(403);
   });
 
   test('discard button returns to scenario list', async ({ page }) => {

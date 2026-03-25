@@ -3,8 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { WorkspaceBuilder } from './workspace.js';
-import type { TestSetup, Scenario } from '../types/index.js';
-import { BASE_PROVIDER, makeSetup, makeScenario } from './storage-test-helpers.js';
+import type { Scenario } from '../types/index.js';
+import { makeSetup, makeScenario } from './storage-test-helpers.js';
 
 // Track workspace paths for cleanup
 const cleanupPaths: string[] = [];
@@ -24,9 +24,8 @@ describe('WorkspaceBuilder', () => {
   const builder = new WorkspaceBuilder();
 
   it('creates a temp directory under os.tmpdir()', async () => {
-    const setup = makeSetup();
     const scenario = makeScenario();
-    const result = await builder.createWorkspace(setup, scenario);
+    const result = await builder.createWorkspace(scenario);
     cleanupPaths.push(result.workspacePath);
 
     expect(result.workspacePath).toContain(os.tmpdir());
@@ -37,10 +36,10 @@ describe('WorkspaceBuilder', () => {
 
   describe('CLAUDE.md files', () => {
     it('writes project-role CLAUDE.md at workspace root', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         claudeMdFiles: [{ role: 'project', content: '# Project Rules' }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -51,10 +50,10 @@ describe('WorkspaceBuilder', () => {
     });
 
     it('writes user-role CLAUDE.md at .claude/CLAUDE.md', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         claudeMdFiles: [{ role: 'user', content: '# User Prefs' }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -65,13 +64,13 @@ describe('WorkspaceBuilder', () => {
     });
 
     it('writes both project and user CLAUDE.md files', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         claudeMdFiles: [
           { role: 'project', content: 'project-content' },
           { role: 'user', content: 'user-content' },
         ],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const projectContent = await fs.readFile(
@@ -89,13 +88,13 @@ describe('WorkspaceBuilder', () => {
 
   describe('rules', () => {
     it('writes rules to .claude/rules/{name}.md', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         rules: [
           { name: 'no-console', content: 'Do not use console.log' },
           { name: 'style', content: 'Use 2-space indent' },
         ],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const rule1 = await fs.readFile(
@@ -111,10 +110,10 @@ describe('WorkspaceBuilder', () => {
     });
 
     it('rejects rule names with path separators', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         rules: [{ name: '../evil', content: 'bad' }],
       });
-      await expect(builder.createWorkspace(setup, makeScenario())).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         'must be a simple name',
       );
     });
@@ -122,10 +121,10 @@ describe('WorkspaceBuilder', () => {
 
   describe('skills', () => {
     it('writes skills to .claude/skills/{name}/SKILL.md', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         skills: [{ name: 'refactor', content: '# Refactoring skill' }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -136,10 +135,10 @@ describe('WorkspaceBuilder', () => {
     });
 
     it('rejects skill names with path traversal', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         skills: [{ name: '..', content: 'bad' }],
       });
-      await expect(builder.createWorkspace(setup, makeScenario())).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         'must be a simple name',
       );
     });
@@ -153,7 +152,7 @@ describe('WorkspaceBuilder', () => {
           { path: 'README.md', content: '# Test' },
         ],
       });
-      const result = await builder.createWorkspace(makeSetup(), scenario);
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const main = await fs.readFile(
@@ -172,7 +171,7 @@ describe('WorkspaceBuilder', () => {
       const scenario = makeScenario({
         workspaceFiles: [{ path: '/etc/passwd', content: 'bad' }],
       });
-      await expect(builder.createWorkspace(makeSetup(), scenario)).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         'must not be an absolute path',
       );
     });
@@ -181,7 +180,7 @@ describe('WorkspaceBuilder', () => {
       const scenario = makeScenario({
         workspaceFiles: [{ path: '../escape/file.txt', content: 'bad' }],
       });
-      await expect(builder.createWorkspace(makeSetup(), scenario)).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         "must not contain '..'",
       );
     });
@@ -193,10 +192,10 @@ describe('WorkspaceBuilder', () => {
       await fs.writeFile(tmpFile, '# Loaded from file', 'utf-8');
       cleanupPaths.push(tmpFile);
 
-      const setup = makeSetup({
+      const scenario = makeScenario({
         claudeMdFiles: [{ role: 'project', content: 'ignored', loadFromFile: tmpFile }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -211,10 +210,10 @@ describe('WorkspaceBuilder', () => {
       await fs.writeFile(tmpFile, 'Rule from file', 'utf-8');
       cleanupPaths.push(tmpFile);
 
-      const setup = makeSetup({
+      const scenario = makeScenario({
         rules: [{ name: 'loaded-rule', content: 'ignored', loadFromFile: tmpFile }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -229,10 +228,10 @@ describe('WorkspaceBuilder', () => {
       await fs.writeFile(tmpFile, 'Skill from file', 'utf-8');
       cleanupPaths.push(tmpFile);
 
-      const setup = makeSetup({
+      const scenario = makeScenario({
         skills: [{ name: 'loaded-skill', content: 'ignored', loadFromFile: tmpFile }],
       });
-      const result = await builder.createWorkspace(setup, makeScenario());
+      const result = await builder.createWorkspace(scenario);
       cleanupPaths.push(result.workspacePath);
 
       const content = await fs.readFile(
@@ -252,11 +251,9 @@ describe('WorkspaceBuilder', () => {
   describe('cleanup', () => {
     it('removes the workspace directory', async () => {
       const result = await builder.createWorkspace(
-        makeSetup({
+        makeScenario({
           claudeMdFiles: [{ role: 'project', content: 'test' }],
           rules: [{ name: 'test-rule', content: 'rule' }],
-        }),
-        makeScenario({
           workspaceFiles: [{ path: 'file.txt', content: 'data' }],
         }),
       );
@@ -275,19 +272,19 @@ describe('WorkspaceBuilder', () => {
 
   describe('path validation edge cases', () => {
     it('rejects rule names containing slashes', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         rules: [{ name: 'bad/name', content: 'x' }],
       });
-      await expect(builder.createWorkspace(setup, makeScenario())).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         'must be a simple name',
       );
     });
 
     it('rejects skill names containing slashes', async () => {
-      const setup = makeSetup({
+      const scenario = makeScenario({
         skills: [{ name: 'bad/name', content: 'x' }],
       });
-      await expect(builder.createWorkspace(setup, makeScenario())).rejects.toThrow(
+      await expect(builder.createWorkspace(scenario)).rejects.toThrow(
         'must be a simple name',
       );
     });

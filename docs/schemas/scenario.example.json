@@ -2,7 +2,13 @@
   "id": "example-scenario-001",
   "name": "Multi-file Refactor",
   "category": "planning",
-  "builtIn": false,
+  "claudeMdFiles": [],
+  "rules": [],
+  "skills": [],
+  "subagents": [],
+  "mcpServers": [],
+  "permissionMode": "acceptEdits",
+  "allowedTools": ["Read", "Write", "Edit", "Grep", "Glob", "Bash"],
   "prompt": "Refactor the user service to separate authentication logic into its own module. The auth module should handle token generation, validation, and refresh. Update all imports across the codebase.",
   "workspaceFiles": [
     {

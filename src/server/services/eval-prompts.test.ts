@@ -96,27 +96,27 @@ describe('buildScorePrompt', () => {
 describe('buildCompliancePrompt', () => {
   it('lists instruction blocks', () => {
     const instructions = [{ source: 'rules', text: 'Always test' }];
-    const prompt = buildCompliancePrompt('transcript', makeSetup(), instructions);
+    const prompt = buildCompliancePrompt('transcript', makeScenario(), instructions);
     expect(prompt).toContain('1. [rules] Always test');
   });
 
   it('shows "No instructions configured" when empty', () => {
-    const prompt = buildCompliancePrompt('transcript', makeSetup(), []);
+    const prompt = buildCompliancePrompt('transcript', makeScenario(), []);
     expect(prompt).toContain('No instructions configured');
   });
 
   it('lists skills and subagents', () => {
-    const setup = makeSetup({
+    const scenario = makeScenario({
       skills: [{ name: 'deploy', content: 'deploy stuff' }],
       subagents: [{ name: 'helper', description: 'helps', prompt: 'help' }],
     });
-    const prompt = buildCompliancePrompt('transcript', setup, []);
+    const prompt = buildCompliancePrompt('transcript', scenario, []);
     expect(prompt).toContain('Skills: deploy');
     expect(prompt).toContain('Subagents: helper');
   });
 
   it('shows "none" for empty skills/subagents', () => {
-    const prompt = buildCompliancePrompt('transcript', makeSetup(), []);
+    const prompt = buildCompliancePrompt('transcript', makeScenario(), []);
     expect(prompt).toContain('Skills: none');
     expect(prompt).toContain('Subagents: none');
   });

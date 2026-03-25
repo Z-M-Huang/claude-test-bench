@@ -89,11 +89,6 @@ export function ScenarioList(): React.JSX.Element {
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex flex-wrap gap-1.5">
                         <CategoryBadge category={sc.category} />
-                        {sc.builtIn && (
-                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary-container/20 text-primary font-bold uppercase tracking-wider flex items-center gap-1">
-                            <span className="w-1 h-1 rounded-full bg-primary" /> Built-in
-                          </span>
-                        )}
                       </div>
                       <button className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="material-symbols-outlined text-sm">more_vert</span>
@@ -107,6 +102,21 @@ export function ScenarioList(): React.JSX.Element {
                         ? `"${sc.prompt.slice(0, 160)}${sc.prompt.length > 160 ? '...' : ''}"`
                         : 'No prompt defined.'}
                     </p>
+                    {/* Agent config summary */}
+                    {(() => {
+                      const parts: string[] = [];
+                      if ((sc.claudeMdFiles ?? []).length > 0) parts.push(`${sc.claudeMdFiles.length} CLAUDE.md`);
+                      if ((sc.rules ?? []).length > 0) parts.push(`${sc.rules.length} rule${sc.rules.length !== 1 ? 's' : ''}`);
+                      if ((sc.subagents ?? []).length > 0) parts.push(`${sc.subagents.length} subagent${sc.subagents.length !== 1 ? 's' : ''}`);
+                      if ((sc.mcpServers ?? []).length > 0) parts.push(`${sc.mcpServers.length} MCP`);
+                      return parts.length > 0 ? (
+                        <div className="text-[10px] text-on-surface-variant mb-3 flex flex-wrap gap-1.5">
+                          {parts.map((p) => (
+                            <span key={p} className="px-1.5 py-0.5 rounded bg-surface-container-high border border-outline-variant/10">{p}</span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center justify-between pt-3 border-t border-outline-variant/10">
                       <div className="flex gap-4">
                         <div className="flex flex-col">

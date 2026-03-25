@@ -157,21 +157,6 @@ describe('Setup routes', () => {
       );
     });
 
-    it('rejects too many claudeMdFiles', async () => {
-      const res = await request(app).post('/api/setups').send({
-        ...VALID_BODY,
-        claudeMdFiles: [
-          { role: 'project', content: 'a' },
-          { role: 'user', content: 'b' },
-          { role: 'project', content: 'c' },
-        ],
-      });
-      expect(res.status).toBe(400);
-      expect(res.body.errors).toEqual(
-        expect.arrayContaining([expect.objectContaining({ field: 'claudeMdFiles' })]),
-      );
-    });
-
     it('rejects negative timeoutSeconds', async () => {
       const res = await request(app).post('/api/setups').send({ ...VALID_BODY, timeoutSeconds: -5 });
       expect(res.status).toBe(400);

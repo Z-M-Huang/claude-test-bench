@@ -67,8 +67,8 @@ export class EvaluationOrchestrator implements IEvaluator {
 
     const { text: transcript, summary } = formatTranscript(run.messages);
     const instructions = parseAllInstructions([
-      ...setup.claudeMdFiles.map((c) => ({ content: c.content, source: `CLAUDE.md (${c.role})` })),
-      ...setup.rules.map((r) => ({ content: r.content, source: `rule:${r.name}` })),
+      ...scenario.claudeMdFiles.map((c) => ({ content: c.content, source: `CLAUDE.md (${c.role})` })),
+      ...scenario.rules.map((r) => ({ content: r.content, source: `rule:${r.name}` })),
     ]);
 
     const accumulators: EvaluatorAccumulator[] = request.evaluators.map((e) => ({
@@ -146,7 +146,7 @@ export class EvaluationOrchestrator implements IEvaluator {
       acc.costUsd += scoreResp.costUsd;
       acc.scoreResult = parseScoreResponse(scoreResp.text);
       acc.assessmentText = scoreResp.text;
-      const compResp = await this.runQuery(evaluator, buildCompliancePrompt(transcript, setup, instructions));
+      const compResp = await this.runQuery(evaluator, buildCompliancePrompt(transcript, scenario, instructions));
       acc.costUsd += compResp.costUsd;
       acc.complianceResult = parseComplianceResponse(compResp.text);
       return toIndividualEvaluations(acc.scoreResult.scores ?? {}, evaluator.role, {});

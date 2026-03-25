@@ -2,7 +2,7 @@
 // Evaluation Prompt Builders
 // ---------------------------------------------------------------------------
 
-import type { Scenario, TestSetup, ScoringDimension } from '../types/index.js';
+import type { Scenario, ScoringDimension, TestSetup } from '../types/index.js';
 import type { IndividualEvaluation } from '../types/evaluation.js';
 import type { TranscriptSummary } from './transcript-formatter.js';
 import type { InstructionBlock } from './instruction-parser.js';
@@ -70,15 +70,15 @@ Respond with valid JSON matching this structure:
 
 export function buildCompliancePrompt(
   transcript: string,
-  setup: TestSetup,
+  scenario: Scenario,
   instructions: readonly InstructionBlock[],
 ): string {
   const instructionList = instructions
     .map((b, i) => `${i + 1}. [${b.source}] ${b.text}`)
     .join('\n');
 
-  const skillNames = setup.skills.map((s) => s.name);
-  const subagentNames = setup.subagents.map((s) => s.name);
+  const skillNames = scenario.skills.map((s) => s.name);
+  const subagentNames = scenario.subagents.map((s) => s.name);
 
   return `You are an expert evaluator checking whether an AI agent followed its configured instructions.
 

@@ -14,7 +14,7 @@ export function Layout(): React.JSX.Element {
   return (
     <div className="flex h-screen bg-surface text-on-surface overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col h-full w-64 bg-surface-container-low py-4 font-body text-xs font-medium border-r border-outline-variant/5">
+      <aside className="hidden md:flex flex-col h-full w-64 shrink-0 overflow-hidden bg-surface-container-low py-4 font-body text-xs font-medium border-r border-outline-variant/5">
         {/* Logo */}
         <div className="px-4 mb-4 flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg primary-gradient flex items-center justify-center">

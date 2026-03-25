@@ -2,7 +2,18 @@
   "id": "scenario-migration-with-instructions",
   "name": "Database Migration Scheduling (With CLAUDE.md)",
   "category": "reasoning",
-  "builtIn": false,
+  "claudeMdFiles": [
+    {
+      "role": "project",
+      "content": "# Reasoning Guidelines\n\n1. Always calculate the critical path before proposing a schedule\n2. Verify all constraints are satisfied before declaring success\n3. If a constraint cannot be met, state this clearly rather than forcing a solution\n4. Show all arithmetic work \u2014 never skip calculations"
+    }
+  ],
+  "rules": [],
+  "skills": [],
+  "subagents": [],
+  "mcpServers": [],
+  "permissionMode": "acceptEdits",
+  "allowedTools": ["Read", "Write", "Edit", "Grep", "Glob", "Bash"],
   "prompt": "Read the migration plan in migration_plan.md. Analyze the constraints and create an optimal migration schedule. Write your analysis and schedule to schedule.md. Be sure to verify your schedule meets all constraints before finalizing.",
   "workspaceFiles": [
     {

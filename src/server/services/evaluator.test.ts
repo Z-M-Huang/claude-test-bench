@@ -33,13 +33,13 @@ const mkScenario = (o: Partial<Scenario> = {}): Scenario => makeScenario({
   scoringDimensions: [
     { name: 'correctness', weight: 0.6, description: 'Correct?' },
     { name: 'style', weight: 0.4, description: 'Well written?' },
-  ], ...o,
+  ],
+  claudeMdFiles: [{ role: 'project', content: 'Always write tests first.' }],
+  rules: [{ name: 'no-any', content: 'Never use TypeScript any.' }],
+  ...o,
 });
 
-const mkSetup = (o: Partial<TestSetup> = {}): TestSetup => makeSetup({
-  claudeMdFiles: [{ role: 'project', content: 'Always write tests first.' }],
-  rules: [{ name: 'no-any', content: 'Never use TypeScript any.' }], ...o,
-});
+const mkSetup = (o: Partial<TestSetup> = {}): TestSetup => makeSetup({ ...o });
 
 function mkCallbacks(): EvaluationCallbacks & { statuses: EvaluationStatus[] } {
   const statuses: EvaluationStatus[] = [];

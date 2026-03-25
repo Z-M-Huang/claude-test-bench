@@ -7,7 +7,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import type { IWorkspaceBuilder, WorkspaceResult } from '../interfaces/workspace.js';
-import type { TestSetup, Scenario, ClaudeMdEntry, RuleEntry, SkillEntry, WorkspaceFile } from '../types/index.js';
+import type { Scenario, ClaudeMdEntry, RuleEntry, SkillEntry, WorkspaceFile } from '../types/index.js';
 
 // ---------------------------------------------------------------------------
 // Path validation
@@ -42,14 +42,14 @@ function assertSafeName(value: string, label: string): void {
 // ---------------------------------------------------------------------------
 
 export class WorkspaceBuilder implements IWorkspaceBuilder {
-  async createWorkspace(setup: TestSetup, scenario: Scenario): Promise<WorkspaceResult> {
+  async createWorkspace(scenario: Scenario): Promise<WorkspaceResult> {
     const workspacePath = path.join(os.tmpdir(), `ctb-run-${randomUUID()}`);
     await fs.mkdir(workspacePath, { recursive: true });
 
     try {
-      await this.writeClaudeMdFiles(workspacePath, setup.claudeMdFiles);
-      await this.writeRules(workspacePath, setup.rules);
-      await this.writeSkills(workspacePath, setup.skills);
+      await this.writeClaudeMdFiles(workspacePath, scenario.claudeMdFiles);
+      await this.writeRules(workspacePath, scenario.rules);
+      await this.writeSkills(workspacePath, scenario.skills);
       await this.writeWorkspaceFiles(workspacePath, scenario.workspaceFiles);
     } catch (err) {
       // Cleanup on failure

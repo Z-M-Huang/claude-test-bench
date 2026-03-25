@@ -34,14 +34,14 @@ describe('Scenario routes', () => {
     it('returns metadata list of all scenarios', async () => {
       vi.mocked(storage.listScenarios).mockResolvedValue([
         makeScenario(),
-        makeScenario({ id: 'sc-2', name: 'Built-in', builtIn: true }),
+        makeScenario({ id: 'sc-2', name: 'Another' }),
       ]);
       const res = await request(app).get('/api/scenarios');
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(2);
       expect(res.body[0]).toEqual({
         id: 'scenario-1', name: 'Test Scenario',
-        category: 'planning', builtIn: false, createdAt: '2026-01-01T00:00:00.000Z',
+        category: 'planning', createdAt: '2026-01-01T00:00:00.000Z',
       });
       expect(res.body[0].prompt).toBeUndefined();
     });
@@ -90,7 +90,6 @@ describe('Scenario routes', () => {
       const res = await request(app).post('/api/scenarios').send(VALID_BODY);
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('My Scenario');
-      expect(res.body.builtIn).toBe(false);
       expect(res.body.id).toBeDefined();
       expect(storage.saveScenario).toHaveBeenCalledTimes(1);
     });

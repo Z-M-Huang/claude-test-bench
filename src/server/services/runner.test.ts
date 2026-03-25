@@ -238,15 +238,17 @@ describe('ScenarioRunner', () => {
     it('passes correct options to the SDK query', async () => {
       mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
       const setup = makeSetup({
-        maxTurns: 5, maxBudgetUsd: 1.0, permissionMode: 'bypassPermissions',
-        thinking: { kind: 'adaptive' }, effort: 'high', allowedTools: ['Read', 'Bash'],
+        thinking: { kind: 'adaptive' }, effort: 'high',
+      });
+      const scenario = makeScenario({
+        maxTurns: 5, permissionMode: 'bypassPermissions',
+        allowedTools: ['Read', 'Bash'],
       });
 
-      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+      await runner.executeRun(setup, scenario, makeTestRun(), createMockCallbacks());
 
       const opts = (mockQueryFn.mock.calls[0][0] as { prompt: string; options: Record<string, unknown> }).options;
       expect(opts.maxTurns).toBe(5);
-      expect(opts.maxBudgetUsd).toBe(1.0);
       expect(opts.permissionMode).toBe('bypassPermissions');
       expect(opts.allowDangerouslySkipPermissions).toBe(true);
       expect(opts.thinking).toEqual({ type: 'adaptive' });
@@ -259,10 +261,10 @@ describe('ScenarioRunner', () => {
 
     it('includes agents option when subagents are defined', async () => {
       mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
-      const setup = makeSetup({
+      const scenario = makeScenario({
         subagents: [{ name: 'helper', description: 'Helps', prompt: 'You help.' }],
       });
-      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+      await runner.executeRun(makeSetup(), scenario, makeTestRun(), createMockCallbacks());
 
       const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
       expect(opts.agents).toBeDefined();
@@ -271,10 +273,10 @@ describe('ScenarioRunner', () => {
 
     it('includes mcpServers option when MCP servers are defined', async () => {
       mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
-      const setup = makeSetup({
+      const scenario = makeScenario({
         mcpServers: [{ name: 'my-mcp', config: { transport: 'stdio', command: 'cmd' } }],
       });
-      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+      await runner.executeRun(makeSetup(), scenario, makeTestRun(), createMockCallbacks());
 
       const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
       expect(opts.mcpServers).toBeDefined();
@@ -337,8 +339,8 @@ describe('ScenarioRunner', () => {
 
     it('does not set allowDangerouslySkipPermissions for default mode', async () => {
       mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
-      const setup = makeSetup({ permissionMode: 'default' });
-      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+      const scenario = makeScenario({ permissionMode: 'default' });
+      await runner.executeRun(makeSetup(), scenario, makeTestRun(), createMockCallbacks());
 
       const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
       expect(opts.allowDangerouslySkipPermissions).toBe(false);
@@ -346,8 +348,8 @@ describe('ScenarioRunner', () => {
 
     it('does not include allowedTools when not set', async () => {
       mockQueryFn.mockReturnValue(createMockQuery([successResult()]));
-      const setup = makeSetup({ allowedTools: undefined });
-      await runner.executeRun(setup, makeScenario(), makeTestRun(), createMockCallbacks());
+      const scenario = makeScenario({ allowedTools: undefined });
+      await runner.executeRun(makeSetup(), scenario, makeTestRun(), createMockCallbacks());
 
       const opts = (mockQueryFn.mock.calls[0][0] as { options: Record<string, unknown> }).options;
       expect(opts.allowedTools).toBeUndefined();

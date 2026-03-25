@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Request, Response } from 'express';
 import type { IStorage } from '../interfaces/storage.js';
 import type { ILogger } from '../interfaces/logger.js';
-import type { TestSetup, ProviderConfig, PermissionMode } from '../types/index.js';
+import type { TestSetup, ProviderConfig } from '../types/index.js';
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -90,9 +90,6 @@ function validateSetupBody(body: unknown): ValidationError[] {
   }
   errors.push(...validateProviderConfig(b.provider));
 
-  if (Array.isArray(b.claudeMdFiles) && b.claudeMdFiles.length > 2) {
-    errors.push({ field: 'claudeMdFiles', message: 'claudeMdFiles cannot exceed 2 entries' });
-  }
   if (b.timeoutSeconds !== undefined) {
     if (typeof b.timeoutSeconds !== 'number' || b.timeoutSeconds <= 0) {
       errors.push({ field: 'timeoutSeconds', message: 'timeoutSeconds must be a positive number' });
@@ -148,18 +145,9 @@ export function createSetupRoutes(storage: IStorage, logger: ILogger): Router {
         name: (body.name as string).trim(),
         description: (body.description as string | undefined) ?? '',
         provider: body.provider as ProviderConfig,
-        claudeMdFiles: Array.isArray(body.claudeMdFiles) ? body.claudeMdFiles : [],
-        rules: Array.isArray(body.rules) ? body.rules : [],
-        skills: Array.isArray(body.skills) ? body.skills : [],
-        subagents: Array.isArray(body.subagents) ? body.subagents : [],
-        mcpServers: Array.isArray(body.mcpServers) ? body.mcpServers : [],
-        permissionMode: (body.permissionMode as PermissionMode | undefined) ?? 'default',
-        maxTurns: typeof body.maxTurns === 'number' ? body.maxTurns : undefined,
-        maxBudgetUsd: typeof body.maxBudgetUsd === 'number' ? body.maxBudgetUsd : undefined,
-        timeoutSeconds: typeof body.timeoutSeconds === 'number' ? body.timeoutSeconds : 300,
-        allowedTools: Array.isArray(body.allowedTools) ? body.allowedTools : undefined,
         thinking: body.thinking as TestSetup['thinking'],
         effort: body.effort as TestSetup['effort'],
+        timeoutSeconds: typeof body.timeoutSeconds === 'number' ? body.timeoutSeconds : 300,
         createdAt: now,
         updatedAt: now,
       };
@@ -192,18 +180,9 @@ export function createSetupRoutes(storage: IStorage, logger: ILogger): Router {
         name: (body.name as string).trim(),
         description: (body.description as string | undefined) ?? '',
         provider: body.provider as ProviderConfig,
-        claudeMdFiles: Array.isArray(body.claudeMdFiles) ? body.claudeMdFiles : [],
-        rules: Array.isArray(body.rules) ? body.rules : [],
-        skills: Array.isArray(body.skills) ? body.skills : [],
-        subagents: Array.isArray(body.subagents) ? body.subagents : [],
-        mcpServers: Array.isArray(body.mcpServers) ? body.mcpServers : [],
-        permissionMode: (body.permissionMode as PermissionMode | undefined) ?? 'default',
-        maxTurns: typeof body.maxTurns === 'number' ? body.maxTurns : undefined,
-        maxBudgetUsd: typeof body.maxBudgetUsd === 'number' ? body.maxBudgetUsd : undefined,
-        timeoutSeconds: typeof body.timeoutSeconds === 'number' ? body.timeoutSeconds : 300,
-        allowedTools: Array.isArray(body.allowedTools) ? body.allowedTools : undefined,
         thinking: body.thinking as TestSetup['thinking'],
         effort: body.effort as TestSetup['effort'],
+        timeoutSeconds: typeof body.timeoutSeconds === 'number' ? body.timeoutSeconds : 300,
         updatedAt: new Date().toISOString(),
       };
       await storage.saveSetup(updated);

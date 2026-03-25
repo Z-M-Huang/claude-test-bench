@@ -1,4 +1,4 @@
-import type { TestSetup, Scenario } from '../types/index.js';
+import type { Scenario } from '../types/index.js';
 
 export interface WorkspaceResult {
   readonly workspacePath: string;
@@ -6,5 +6,5 @@ export interface WorkspaceResult {
 }
 
 export interface IWorkspaceBuilder {
-  createWorkspace(setup: TestSetup, scenario: Scenario): Promise<WorkspaceResult>;
+  createWorkspace(scenario: Scenario): Promise<WorkspaceResult>;
 }

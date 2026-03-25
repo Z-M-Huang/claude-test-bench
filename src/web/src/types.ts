@@ -35,18 +35,9 @@ export interface TestSetup {
   readonly name: string;
   readonly description: string;
   readonly provider: ProviderConfig;
-  readonly claudeMdFiles: readonly { role: 'project' | 'user'; content: string }[];
-  readonly rules: readonly { name: string; content: string }[];
-  readonly skills: readonly { name: string; content: string }[];
-  readonly subagents: readonly { name: string; description: string; prompt: string }[];
-  readonly mcpServers: readonly { name: string; config: Record<string, unknown> }[];
-  readonly permissionMode: string;
-  readonly maxTurns?: number;
-  readonly maxBudgetUsd?: number;
-  readonly timeoutSeconds: number;
-  readonly allowedTools?: readonly string[];
   readonly thinking?: { kind: string; budgetTokens?: number };
-  readonly effort?: 'low' | 'medium' | 'high';
+  readonly effort?: 'none' | 'low' | 'medium' | 'high';
+  readonly timeoutSeconds: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -72,9 +63,19 @@ export interface Scenario {
   readonly id: string;
   readonly name: string;
   readonly category: ScenarioCategory;
-  readonly builtIn: boolean;
+  // Agent configuration
+  readonly claudeMdFiles: readonly { role: 'project' | 'user'; content: string }[];
+  readonly rules: readonly { name: string; content: string }[];
+  readonly skills: readonly { name: string; content: string }[];
+  readonly subagents: readonly { name: string; description: string; prompt: string }[];
+  readonly mcpServers: readonly { name: string; config: Record<string, unknown> }[];
+  readonly permissionMode: string;
+  readonly maxTurns?: number;
+  readonly allowedTools?: readonly string[];
+  // Test content
   readonly prompt: string;
   readonly workspaceFiles: readonly WorkspaceFile[];
+  // Grading
   readonly expectedAnswer: string;
   readonly criticalRequirements: readonly string[];
   readonly gradingGuidelines: string;

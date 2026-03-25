@@ -140,9 +140,7 @@ export function RunDetail(): React.JSX.Element {
           <div><span className="text-on-surface-variant">Name:</span> <span className="text-on-surface font-medium">{setup.name}</span></div>
           <div><span className="text-on-surface-variant">Model:</span> <span className="text-on-surface font-mono">{setup.provider.model}</span></div>
           <div><span className="text-on-surface-variant">Provider:</span> <span className="text-on-surface">{setup.provider.kind}</span></div>
-          <div><span className="text-on-surface-variant">Permission Mode:</span> <span className="text-on-surface">{setup.permissionMode}</span></div>
           <div><span className="text-on-surface-variant">Timeout:</span> <span className="text-on-surface font-mono">{setup.timeoutSeconds}s</span></div>
-          {setup.maxTurns && <div><span className="text-on-surface-variant">Max Turns:</span> <span className="text-on-surface font-mono">{setup.maxTurns}</span></div>}
           {setup.effort && <div><span className="text-on-surface-variant">Effort:</span> <span className="text-on-surface capitalize">{setup.effort}</span></div>}
         </div>
       </CollapsiblePanel>
@@ -152,6 +150,10 @@ export function RunDetail(): React.JSX.Element {
         <div className="space-y-2 text-xs">
           <div><span className="text-on-surface-variant">Name:</span> <span className="text-on-surface font-medium">{scenario.name}</span></div>
           <div><span className="text-on-surface-variant">Category:</span> <span className="text-on-surface capitalize">{scenario.category}</span></div>
+          <div><span className="text-on-surface-variant">Permission Mode:</span> <span className="text-on-surface">{scenario.permissionMode}</span></div>
+          {scenario.maxTurns && <div><span className="text-on-surface-variant">Max Turns:</span> <span className="text-on-surface font-mono">{scenario.maxTurns}</span></div>}
+          {(scenario.claudeMdFiles ?? []).length > 0 && <div><span className="text-on-surface-variant">CLAUDE.md files:</span> <span className="text-on-surface font-mono">{scenario.claudeMdFiles.length}</span></div>}
+          {(scenario.rules ?? []).length > 0 && <div><span className="text-on-surface-variant">Rules:</span> <span className="text-on-surface font-mono">{scenario.rules.length}</span></div>}
           <div>
             <span className="text-on-surface-variant">Prompt:</span>
             <div className="mt-1 text-on-surface font-mono whitespace-pre-wrap bg-surface-container p-2 rounded text-[0.7rem]">

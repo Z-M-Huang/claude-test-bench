@@ -49,7 +49,6 @@ export class JsonFileStorage implements IStorage {
         matchesFilter: (s: Scenario, f?: ScenarioFilter) => {
           if (!f) return true;
           if (f.category && s.category !== f.category) return false;
-          if (f.builtIn !== undefined && s.builtIn !== f.builtIn) return false;
           return true;
         },
       },

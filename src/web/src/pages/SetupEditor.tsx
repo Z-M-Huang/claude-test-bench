@@ -3,12 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import type { ProviderConfig, TestSetup } from '../types.js';
 import { ProviderConfigEditor } from '../components/ProviderConfig.js';
-import { ClaudeMdEditor } from '../components/ClaudeMdEditor.js';
-import { McpServerEditor } from '../components/McpServerEditor.js';
-import { SubagentEditor } from '../components/SubagentEditor.js';
 import { AdvancedSettings } from '../components/AdvancedSettings.js';
-import { NameContentList } from '../components/NameContentList.js';
-import type { NameContentEntry } from '../components/NameContentList.js';
 
 const labelCls = 'block text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1.5';
 const inputCls =
@@ -29,19 +24,10 @@ export function SetupEditor(): React.JSX.Element {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [provider, setProvider] = useState<ProviderConfig>(defaultProvider);
-  const [claudeMdFiles, setClaudeMdFiles] = useState<{ role: 'project' | 'user'; content: string; loadFromFile?: string }[]>([]);
-  const [rules, setRules] = useState<NameContentEntry[]>([]);
-  const [skills, setSkills] = useState<NameContentEntry[]>([]);
-  const [subagents, setSubagents] = useState<{ name: string; description: string; prompt: string; loadFromFile?: string }[]>([]);
-  const [mcpServers, setMcpServers] = useState<{ name: string; config: Record<string, unknown> }[]>([]);
   const [advanced, setAdvanced] = useState({
     timeoutSeconds: 300,
-    permissionMode: 'default',
-    maxTurns: undefined as number | undefined,
-    maxBudgetUsd: undefined as number | undefined,
-    allowedTools: [] as string[],
     thinking: { kind: 'adaptive' } as { kind: string; budgetTokens?: number },
-    effort: 'medium' as 'low' | 'medium' | 'high',
+    effort: 'medium' as 'none' | 'low' | 'medium' | 'high',
   });
 
   const [saving, setSaving] = useState(false);
@@ -56,17 +42,8 @@ export function SetupEditor(): React.JSX.Element {
       setName(setup.name);
       setDescription(setup.description);
       setProvider(setup.provider);
-      setClaudeMdFiles(setup.claudeMdFiles.map((f) => ({ ...f })));
-      setRules(setup.rules.map((r) => ({ ...r })));
-      setSkills(setup.skills.map((s) => ({ ...s })));
-      setSubagents(setup.subagents.map((s) => ({ ...s })));
-      setMcpServers(setup.mcpServers.map((s) => ({ ...s })));
       setAdvanced({
         timeoutSeconds: setup.timeoutSeconds,
-        permissionMode: setup.permissionMode,
-        maxTurns: setup.maxTurns,
-        maxBudgetUsd: setup.maxBudgetUsd,
-        allowedTools: setup.allowedTools ? [...setup.allowedTools] : [],
         thinking: setup.thinking ? { ...setup.thinking } : { kind: 'adaptive' },
         effort: setup.effort ?? 'medium',
       });
@@ -88,16 +65,7 @@ export function SetupEditor(): React.JSX.Element {
         name,
         description,
         provider,
-        claudeMdFiles,
-        rules,
-        skills,
-        subagents,
-        mcpServers,
-        permissionMode: advanced.permissionMode,
         timeoutSeconds: advanced.timeoutSeconds,
-        maxTurns: advanced.maxTurns,
-        maxBudgetUsd: advanced.maxBudgetUsd,
-        allowedTools: advanced.allowedTools.length > 0 ? advanced.allowedTools : undefined,
         thinking: advanced.thinking.kind !== 'adaptive' ? advanced.thinking : undefined,
         effort: advanced.effort,
       };
@@ -166,51 +134,6 @@ export function SetupEditor(): React.JSX.Element {
             Provider Configuration
           </h2>
           <ProviderConfigEditor value={provider} onChange={setProvider} />
-        </section>
-
-        {/* CLAUDE.md files */}
-        <section className={sectionCls}>
-          <h2 className={sectionHeadingCls}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>description</span>
-            CLAUDE.md Files
-          </h2>
-          <ClaudeMdEditor items={claudeMdFiles} onChange={setClaudeMdFiles} />
-        </section>
-
-        {/* Rules */}
-        <section className={sectionCls}>
-          <h2 className={sectionHeadingCls}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>gavel</span>
-            Rules
-          </h2>
-          <NameContentList items={rules} onChange={setRules} label="Rule" namePlaceholder="Rule name" contentPlaceholder="Rule content..." />
-        </section>
-
-        {/* Skills */}
-        <section className={sectionCls}>
-          <h2 className={sectionHeadingCls}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>build</span>
-            Skills
-          </h2>
-          <NameContentList items={skills} onChange={setSkills} label="Skill" namePlaceholder="Skill name" contentPlaceholder="Skill definition..." />
-        </section>
-
-        {/* Subagents */}
-        <section className={sectionCls}>
-          <h2 className={sectionHeadingCls}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>smart_toy</span>
-            Subagents
-          </h2>
-          <SubagentEditor items={subagents} onChange={setSubagents} />
-        </section>
-
-        {/* MCP Servers */}
-        <section className={sectionCls}>
-          <h2 className={sectionHeadingCls}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>dns</span>
-            MCP Servers
-          </h2>
-          <McpServerEditor items={mcpServers} onChange={setMcpServers} />
         </section>
 
         {/* Advanced Settings */}

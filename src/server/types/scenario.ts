@@ -2,7 +2,15 @@
 // Scenario Types
 // ---------------------------------------------------------------------------
 
-import type { ScoringDimension } from './setup.js';
+import type {
+  ClaudeMdEntry,
+  McpServerEntry,
+  PermissionMode,
+  RuleEntry,
+  ScoringDimension,
+  SkillEntry,
+  SubagentEntry,
+} from './setup.js';
 
 /** Built-in category labels for scenarios (behavior/planning focused). */
 export type ScenarioCategory =
@@ -21,14 +29,24 @@ export interface WorkspaceFile {
   readonly content: string;
 }
 
-/** A scenario defines a prompt and its expected outcomes. */
+/** A scenario defines what to test, agent config, and how to grade. */
 export interface Scenario {
   readonly id: string;
   readonly name: string;
   readonly category: ScenarioCategory;
-  readonly builtIn: boolean;
+  // Agent configuration
+  readonly claudeMdFiles: readonly ClaudeMdEntry[];
+  readonly rules: readonly RuleEntry[];
+  readonly skills: readonly SkillEntry[];
+  readonly subagents: readonly SubagentEntry[];
+  readonly mcpServers: readonly McpServerEntry[];
+  readonly permissionMode: PermissionMode;
+  readonly maxTurns?: number;
+  readonly allowedTools?: readonly string[];
+  // Test content
   readonly prompt: string;
   readonly workspaceFiles: readonly WorkspaceFile[];
+  // Grading
   readonly expectedAnswer: string;
   readonly criticalRequirements: readonly string[];
   readonly gradingGuidelines: string;

@@ -91,8 +91,8 @@ export type PermissionMode =
   | 'plan'
   | 'dontAsk';
 
-/** Effort level for Claude. */
-export type EffortLevel = 'low' | 'medium' | 'high';
+/** Effort level for Claude. 'none' = not applicable (e.g. non-Anthropic providers). */
+export type EffortLevel = 'none' | 'low' | 'medium' | 'high';
 
 /** Scoring dimension used to evaluate a run. */
 export interface ScoringDimension {
@@ -101,24 +101,15 @@ export interface ScoringDimension {
   readonly description: string;
 }
 
-/** A complete test setup that defines how the agent is configured. */
+/** A complete test setup that defines how to connect to the provider. */
 export interface TestSetup {
   readonly id: string;
   readonly name: string;
   readonly description: string;
   readonly provider: ProviderConfig;
-  readonly claudeMdFiles: readonly ClaudeMdEntry[]; // max 2
-  readonly rules: readonly RuleEntry[];
-  readonly skills: readonly SkillEntry[];
-  readonly subagents: readonly SubagentEntry[];
-  readonly mcpServers: readonly McpServerEntry[];
-  readonly permissionMode: PermissionMode;
-  readonly maxTurns?: number;
-  readonly maxBudgetUsd?: number;
-  readonly timeoutSeconds: number;
-  readonly allowedTools?: readonly string[];
   readonly thinking?: ThinkingConfig;
   readonly effort?: EffortLevel;
+  readonly timeoutSeconds: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

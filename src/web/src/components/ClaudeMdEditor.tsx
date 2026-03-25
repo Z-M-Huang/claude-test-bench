@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface ClaudeMdEntry {
   role: 'project' | 'user';
   content: string;
@@ -9,93 +11,122 @@ interface Props {
   onChange: (items: ClaudeMdEntry[]) => void;
 }
 
-const labelCls = 'block text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1.5';
+type SourceMode = 'inline' | 'file';
+
 const inputCls =
   'w-full bg-surface-container-low border border-outline-variant/20 rounded-md px-3 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary-container focus:border-primary-container placeholder:text-outline/50';
 
-export function ClaudeMdEditor({ items, onChange }: Props): React.JSX.Element {
-  function updateItem(idx: number, patch: Partial<ClaudeMdEntry>) {
-    const next = items.map((item, i) => (i === idx ? { ...item, ...patch } : item));
-    onChange(next);
-  }
+function getMode(entry: ClaudeMdEntry | undefined): SourceMode {
+  if (!entry) return 'inline';
+  return entry.loadFromFile ? 'file' : 'inline';
+}
 
-  function addItem() {
-    onChange([...items, { role: 'project', content: '' }]);
-  }
+function SlotEditor({
+  role,
+  entry,
+  onUpdate,
+  onToggle,
+}: {
+  role: 'project' | 'user';
+  entry: ClaudeMdEntry | undefined;
+  onUpdate: (entry: ClaudeMdEntry | undefined) => void;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const enabled = !!entry;
+  const [mode, setMode] = useState<SourceMode>(getMode(entry));
 
-  function removeItem(idx: number) {
-    onChange(items.filter((_, i) => i !== idx));
+  function handleModeChange(newMode: SourceMode) {
+    setMode(newMode);
+    if (!entry) return;
+    if (newMode === 'file') {
+      onUpdate({ role, content: '', loadFromFile: entry.loadFromFile ?? '' });
+    } else {
+      onUpdate({ role, content: entry.content, loadFromFile: undefined });
+    }
   }
 
   return (
-    <div className="space-y-4">
-      {items.map((item, idx) => (
-        <div key={idx} className="bg-surface-container rounded-md p-4 space-y-3 border border-outline-variant/10">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 max-w-[160px]">
-              <label className={labelCls}>Role</label>
-              <select
-                className={inputCls}
-                value={item.role}
-                onChange={(e) => updateItem(idx, { role: e.target.value as 'project' | 'user' })}
-              >
-                <option value="project">Project</option>
-                <option value="user">User</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={() => removeItem(idx)}
-              className="text-error/70 hover:text-error transition-colors p-1"
-              title="Remove"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>close</span>
-            </button>
-          </div>
-
-          <div>
-            <label className={labelCls}>Content</label>
-            <textarea
-              className={inputCls + ' font-mono min-h-[120px] resize-y'}
-              value={item.content}
-              placeholder="# CLAUDE.md content..."
-              onChange={(e) => updateItem(idx, { content: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className={labelCls}>Load from File (optional)</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className={inputCls}
-                value={item.loadFromFile ?? ''}
-                placeholder="/path/to/CLAUDE.md"
-                onChange={(e) => updateItem(idx, { loadFromFile: e.target.value || undefined })}
-              />
-              {item.loadFromFile && (
-                <button
-                  type="button"
-                  onClick={() => updateItem(idx, { loadFromFile: undefined })}
-                  className="text-on-surface-variant hover:text-on-surface px-2 transition-colors"
-                  title="Clear path"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>backspace</span>
-                </button>
-              )}
-            </div>
-          </div>
+    <div className={'rounded-lg border transition-colors ' + (enabled ? 'border-primary/30 bg-surface-container' : 'border-outline-variant/10 bg-surface-container/50')}>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-base text-primary">
+            {role === 'project' ? 'folder' : 'person'}
+          </span>
+          <span className="text-xs font-bold uppercase tracking-widest text-on-surface">
+            {role === 'project' ? 'Project' : 'User'} CLAUDE.md
+          </span>
         </div>
-      ))}
+        <button
+          type="button"
+          onClick={() => onToggle(!enabled)}
+          className={'relative inline-flex h-5 w-9 items-center rounded-full transition-colors ' + (enabled ? 'bg-primary' : 'bg-outline-variant/30')}
+        >
+          <span className={'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ' + (enabled ? 'translate-x-4' : 'translate-x-1')} />
+        </button>
+      </div>
 
-      <button
-        type="button"
-        onClick={addItem}
-        className="w-full py-2 border border-dashed border-outline-variant/30 rounded-md text-xs font-bold text-on-surface-variant hover:text-on-surface hover:border-outline-variant/60 transition-colors flex items-center justify-center gap-1.5"
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>add</span>
-        Add CLAUDE.md
-      </button>
+      {enabled && (
+        <div className="px-4 pb-4 space-y-3">
+          {/* Source toggle */}
+          <div className="flex gap-1 bg-surface-container-high rounded-md p-0.5">
+            {(['inline', 'file'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleModeChange(m)}
+                className={'flex-1 py-1.5 text-[0.65rem] font-bold uppercase tracking-wider rounded transition-colors ' +
+                  (mode === m
+                    ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface')}
+              >
+                {m === 'inline' ? 'Inline Content' : 'File Reference'}
+              </button>
+            ))}
+          </div>
+
+          {mode === 'inline' ? (
+            <textarea
+              className={inputCls + ' font-mono min-h-[100px] resize-y text-xs'}
+              value={entry?.content ?? ''}
+              placeholder="# CLAUDE.md content..."
+              onChange={(e) => onUpdate({ role, content: e.target.value, loadFromFile: undefined })}
+            />
+          ) : (
+            <input
+              type="text"
+              className={inputCls + ' font-mono text-xs'}
+              value={entry?.loadFromFile ?? ''}
+              placeholder="/path/to/CLAUDE.md"
+              onChange={(e) => onUpdate({ role, content: '', loadFromFile: e.target.value })}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ClaudeMdEditor({ items, onChange }: Props): React.JSX.Element {
+  const project = items.find((i) => i.role === 'project');
+  const user = items.find((i) => i.role === 'user');
+
+  function handleUpdate(role: 'project' | 'user', entry: ClaudeMdEntry | undefined) {
+    const other = items.filter((i) => i.role !== role);
+    onChange(entry ? [...other, entry] : other);
+  }
+
+  function handleToggle(role: 'project' | 'user', enabled: boolean) {
+    if (enabled) {
+      handleUpdate(role, { role, content: '' });
+    } else {
+      handleUpdate(role, undefined);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <SlotEditor role="project" entry={project} onUpdate={(e) => handleUpdate('project', e)} onToggle={(on) => handleToggle('project', on)} />
+      <SlotEditor role="user" entry={user} onUpdate={(e) => handleUpdate('user', e)} onToggle={(on) => handleToggle('user', on)} />
     </div>
   );
 }

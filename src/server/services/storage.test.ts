@@ -138,14 +138,6 @@ describe('JsonFileStorage', () => {
       expect(filtered[0].id).toBe('s1');
     });
 
-    it('filters scenarios by builtIn flag', async () => {
-      await storage.saveScenario(makeScenario({ id: 's1', builtIn: true }));
-      await storage.saveScenario(makeScenario({ id: 's2', builtIn: false }));
-      const filtered = await storage.listScenarios({ builtIn: true });
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].id).toBe('s1');
-    });
-
     it('deletes a scenario', async () => {
       await storage.saveScenario(makeScenario());
       expect(await storage.deleteScenario('scenario-1')).toBe(true);

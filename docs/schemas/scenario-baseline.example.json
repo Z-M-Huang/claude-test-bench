@@ -2,7 +2,13 @@
   "id": "scenario-migration-baseline",
   "name": "Database Migration Scheduling (Baseline)",
   "category": "reasoning",
-  "builtIn": false,
+  "claudeMdFiles": [],
+  "rules": [],
+  "skills": [],
+  "subagents": [],
+  "mcpServers": [],
+  "permissionMode": "acceptEdits",
+  "allowedTools": ["Read", "Write", "Edit", "Grep", "Glob", "Bash"],
   "prompt": "Read the migration plan in migration_plan.md. Analyze the constraints and create an optimal migration schedule. Write your analysis and schedule to schedule.md. Be sure to verify your schedule meets all constraints before finalizing.",
   "workspaceFiles": [
     {

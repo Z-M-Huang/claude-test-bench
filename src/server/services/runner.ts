@@ -57,36 +57,35 @@ export class ScenarioRunner implements IRunner {
 
     try {
       // Create workspace first — timeout starts only after workspace is ready
-      ws = await this.workspace.createWorkspace(setup, scenario);
+      ws = await this.workspace.createWorkspace(scenario);
 
       // Set up timeout after workspace creation succeeds
       const timeoutMs = setup.timeoutSeconds * 1000;
       timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
       callbacks.onStatusChange('running');
 
-      // Build SDK options
+      // Build SDK options — provider/model/thinking/effort from setup, agent config from scenario
       const env = buildRunEnv(setup.provider);
-      const agents = await buildAgentsMap(setup.subagents);
-      const mcpServers = buildMcpMap(setup.mcpServers);
+      const agents = await buildAgentsMap(scenario.subagents);
+      const mcpServers = buildMcpMap(scenario.mcpServers);
 
       const options: SDKOptions = {
         cwd: ws.workspacePath,
         model: setup.provider.model,
         env,
         settingSources: ['project'],
-        permissionMode: setup.permissionMode,
-        allowDangerouslySkipPermissions: setup.permissionMode === 'bypassPermissions',
+        permissionMode: scenario.permissionMode,
+        allowDangerouslySkipPermissions: scenario.permissionMode === 'bypassPermissions',
         sandbox: { enabled: true, autoAllowBashIfSandboxed: true },
         persistSession: false,
         abortController,
-        maxTurns: setup.maxTurns,
-        maxBudgetUsd: setup.maxBudgetUsd,
+        maxTurns: scenario.maxTurns,
         thinking: toSDKThinking(setup.thinking),
-        effort: setup.effort,
+        effort: setup.effort === 'none' ? undefined : setup.effort,
       };
 
-      if (setup.allowedTools && setup.allowedTools.length > 0) {
-        options.allowedTools = [...setup.allowedTools];
+      if (scenario.allowedTools && scenario.allowedTools.length > 0) {
+        options.allowedTools = [...scenario.allowedTools];
       }
 
       if (Object.keys(agents).length > 0) {
