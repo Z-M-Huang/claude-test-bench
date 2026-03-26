@@ -32,6 +32,9 @@ export function RunHistory(): React.JSX.Element {
   const [filterScenario, setFilterScenario] = useState('');
   const [filterStatus, setFilterStatus] = useState<RunStatus | ''>('');
 
+  // Sort
+  const [dateSort, setDateSort] = useState<'asc' | 'desc'>('desc');
+
   // Eval panel state
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedEvals, setSelectedEvals] = useState<Evaluation[]>([]);
@@ -52,12 +55,17 @@ export function RunHistory(): React.JSX.Element {
   const providerMap = new Map(providers.map((s) => [s.id, s.name]));
   const scenarioMap = new Map(scenarios.map((s) => [s.id, s.name]));
 
-  const filtered = runs.filter((r) => {
-    if (filterProvider && r.providerId !== filterProvider) return false;
-    if (filterScenario && r.scenarioId !== filterScenario) return false;
-    if (filterStatus && r.status !== filterStatus) return false;
-    return true;
-  });
+  const filtered = runs
+    .filter((r) => {
+      if (filterProvider && r.providerId !== filterProvider) return false;
+      if (filterScenario && r.scenarioId !== filterScenario) return false;
+      if (filterStatus && r.status !== filterStatus) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return dateSort === 'asc' ? diff : -diff;
+    });
 
   const selectedRun = selectedRunId ? runs.find((r) => r.id === selectedRunId) ?? null : null;
 
@@ -128,7 +136,18 @@ export function RunHistory(): React.JSX.Element {
                   <th className="px-6 py-3 font-semibold">Duration</th>
                   <th className="px-6 py-3 font-semibold text-center">Turns</th>
                   <th className="px-6 py-3 font-semibold text-right">Cost</th>
-                  <th className="px-6 py-3 font-semibold text-right">Date</th>
+                  <th className="px-6 py-3 font-semibold text-right">
+                    <button
+                      type="button"
+                      onClick={() => setDateSort((prev) => prev === 'desc' ? 'asc' : 'desc')}
+                      className="inline-flex items-center gap-1 hover:text-on-surface transition-colors"
+                    >
+                      Date
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>
+                        {dateSort === 'desc' ? 'arrow_downward' : 'arrow_upward'}
+                      </span>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody className="text-[0.75rem] divide-y divide-outline-variant/5">
