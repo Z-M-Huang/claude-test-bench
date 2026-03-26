@@ -13,6 +13,12 @@ import type { Provider } from '../types/index.js';
 const SEED_SCENARIOS = [
   'scenario-baseline.example.json',
   'scenario-with-claude-md.example.json',
+  'scenario-carwash-baseline.example.json',
+  'scenario-carwash-with-claude-md.example.json',
+  'scenario-negative-analysis-baseline.example.json',
+  'scenario-negative-analysis-with-claude-md.example.json',
+  'scenario-golden-rules-baseline.example.json',
+  'scenario-golden-rules-with-claude-md.example.json',
 ];
 
 const SEED_PROVIDERS = [
